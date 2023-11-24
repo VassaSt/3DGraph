@@ -1,0 +1,7 @@
+name: 3D Graph
+version: 0.1.0
+id: reearth-plugin-3DGraph
+extensions:
+  - id: 3DGraph
+    type: widget
+    name: 3D Graph

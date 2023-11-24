@@ -1,0 +1,160 @@
+reearth.ui.show(`
+<style>
+  html,
+  body {
+    width: 300px;
+    height: 70px;
+    background-color: #e6e6e6;
+    overflow: hidden;
+  }
+
+  .wrapper {
+    box-sizing: border-box;
+  }
+
+  input {
+    border: none;
+    width: 180px;
+    height: 20px;
+    color: #141414;
+    background-color: #BFBFBF;
+    margin-bottom: 10px;
+  }
+
+  input::placeholder {
+    font-size: 12px;
+    padding-left: 4px;
+  }
+  
+</style>
+<div class="wrapper">
+  <input type="text" id="search-input">
+  <input type="text" id="value-input">
+  <button id="search-btn" class="cursor-btn"> Search </button>
+</div>
+<script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+<script>
+  let czml;
+  let layerId
+  let reearth, cesium, property, layers;
+  let resultLang = 'en'
+  let centroid = []
+  let centroidArr = []
+
+  
+  document.getElementById("search-btn").addEventListener('click', searchByLocationName);
+
+  function searchByLocationName() {
+    let addressElm = document.getElementById("search-input");
+    let valueElm = document.getElementById("value-input");
+    let keyword = addressElm.value.replace(/ |,/g, '+');
+    let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
+    let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+    let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+
+    // console.log("getCentroidPoint", getCentroidPoint);
+
+    fetch(getCentroidPoint).then(response => {
+      if (response.ok) {
+        response.json().then(data => {
+          console.log("data: ", data);
+
+          data.features.map(obj => {
+            if (obj.properties.category === "boundary") {
+              centroid.push(obj.geometry.coordinates)
+              centroidArr.push({
+                placeId: obj.properties["place_id"],
+                centroid: obj.geometry.coordinates,
+                value: valueElm.value,
+              })
+            }
+          })
+          console.log("centroidArr", centroidArr);
+        })
+      } else {
+        throw new Error(response.statusText);
+      }
+    })
+  }
+
+
+  window.addEventListener("message", async function (e) {
+    if (e.source !== parent) return;
+
+    reearth = e.source.reearth;
+    property = e.source.property;
+    cesium = e.source.Cesium;
+    layers = reearth.layers.layers;
+
+    let Lat = centroidArr[0].centroid[0];
+    let Lng = centroidArr[0].centroid[1];
+    let Value = (centroidArr[0].value) * 10;
+
+    console.log(Lat, Lng, Value);
+
+    czml = [{
+      "id": "document",
+      "name": "CZML",
+      "version": "1.0"
+    }, {
+      "id": "czmlId",
+      "name": "My Location",
+      "position": {
+        "cartographicDegrees": [Lat, Lng, 2000.0]
+      },
+      "cylinder": {
+        "length": Value,
+        "topRadius": 2000.0,
+        "bottomRadius": 2000.0,
+        "material": {
+          "solidColor": {
+            "color": {
+              "rgba": [255, 255, 0, 225],
+            },
+          },
+        },
+        "outline": true,
+        "outlineColor": {
+          "rgba": [0, 0, 0, 255],
+        },
+      }
+    }];
+
+
+    layerId = reearth.layers.add({
+      extensionId: "resource",
+      isVisible: true,
+      title: 'CZML',
+      property: {
+        default: {
+          url: czml,
+          type: "czml",
+          clampToGround: true
+        },
+      },
+    });
+
+    reearth.camera.flyTo({
+      lng: Lat,
+      lat: Lng,
+      height: 40000
+    }, {
+      duration: 2
+    });
+
+  });
+
+</script>
+
+`
+);
+
+reearth.on("update", send);
+send();
+
+function send() {
+reearth.ui.postMessage({
+property: reearth.widget.property,
+layer: reearth.layers.layers
+})
+}
