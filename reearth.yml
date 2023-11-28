@@ -1,7 +1,7 @@
-name: 3D Graph
+name: Plugin-3DGraph
 version: 0.1.0
-id: reearth-plugin-3DGraph
+id: diagram-graph-plugin
 extensions:
-  - id: 3DGraph
+  - id: diagram-graph
     type: widget
-    name: 3D Graph
+    name: Plugin 3DGraph
