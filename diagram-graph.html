@@ -6,7 +6,6 @@ reearth.ui.show(`
   body {
     margin: 0;
     width: 300px;
-    height: 70px;
     overflow: hidden;
   }
 
@@ -29,11 +28,24 @@ reearth.ui.show(`
     font-size: 12px;
     padding-left: 4px;
   }
+
+  label {
+    display: inline-block;
+    width: 55px;
+  }
 </style>
 
 <div id="wrapper">
   <input type="text" id="search-input">
   <input type="text" id="value-input">
+<div>
+  <label for="year-from">FROM: </label>
+  <input type="text" id="year-from">
+</div>
+<div>
+  <label for="year-to">TO: </label>
+  <input type="text" id="year-to">
+</div>
   <button id="search-btn" class="cursor-btn"> Search </button>
 </div>
 
@@ -49,9 +61,6 @@ reearth.ui.show(`
 const searchBtn = document.getElementById("search-btn");
 
 
-  // document.getElementById("search-btn").addEventListener('click', searchByLocationName);
-
-
   window.addEventListener("message", async function (e) {
     if (e.source !== parent) return;
 
@@ -59,9 +68,14 @@ const searchBtn = document.getElementById("search-btn");
     layers = reearth.layers.layers;
     cesium = reearth.Cesium;
 
-    searchBtn.addEventListener('click', function searchByLocationName() {
+  });
+
+
+  searchBtn.addEventListener('click', function searchByLocationName() {
     let addressElm = document.getElementById("search-input");
     let valueElm = document.getElementById("value-input");
+    let yearFrom = document.getElementById("year-from");
+    let yearTo = document.getElementById("year-to");
     let keyword = addressElm.value.replace(/ |,/g, '+');
     let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
     let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
@@ -81,6 +95,8 @@ const searchBtn = document.getElementById("search-btn");
                 placeId: obj.properties["place_id"],
                 centroid: obj.geometry.coordinates,
                 value: valueElm.value,
+                yearFrom: yearFrom.value,
+                yearTo: yearTo.value,
               })
             }
           })
@@ -93,7 +109,6 @@ const searchBtn = document.getElementById("search-btn");
     })
   }
 );
-  });
 
 
   function setCZML(centroidArr) {
@@ -102,26 +117,44 @@ let czmlId = i++
     
     if (centroidArr.length > 0) {
       centroidArr.map((element) => {
-console.log(element);
+      // console.log(element);
       let Lat = element.centroid[0];
       let Lng = element.centroid[1];
       let Value = (element.value) * 10;
       let Value2 = Value * 2; 
       let Value3 = Value * 3; 
-      let timeLine = "2023-11-23T00:00:00Z/2023-11-24T24:00:00Z";
-      let timeLine2 =  "2023-11-25T00:00:00Z/2023-11-26T24:00:00Z";
-      let timeLine3 = "2023-11-27T00:00:00Z/2023-11-28T24:00:00Z";
-  
-      let czmlId = [
+      let From = element.yearFrom;
+      let To = element.yearTo;
+      let timeFrom = new Date(From);
+      let timeTo = new Date(To);
+      let newDate = new Date();
+
+      function timeSet(item) {
+        let result = new Date(item + item.getTimezoneOffset())
+        console.log(result.toJSON());
+      return result.toJSON();
+      }
+
+// let timeLine = timeSet(timeFrom) + "/" + timeSet(timeTo);
+// console.log(timeLine);
+//       let timeLine2 =  "2023-11-25T00:00:00Z/2023-11-26T24:00:00Z";
+//       let timeLine3 = "2023-11-27T00:00:00Z/2023-11-28T24:00:00Z";
+
+//   let test = timeSet(timeTo) + "/" + timeSet(newDate)
+
+  czml = [
     {
       id: "document",
       name: "CZML Geometries: Cones and Cylinders",
       version: "1.0",
     },
-    {
-      id: "shape1",
+  ]
+
+  if (Value <= 5000) {
+    czml.push({
+      id: "Green cylinder",
       name: "Green cylinder",
-      availability: timeLine,
+      availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
       position: {
         cartographicDegrees: [Lat, Lng, 0],
       },
@@ -139,15 +172,41 @@ console.log(element);
         outline: false,
       },
     },
-    {
-      id: "shape2",
-      name: "Red cylinder",
-      availability: timeLine2,
+    )
+  }
+
+  if (Value >= 7500) {
+    let cylinderLength = Value - 5000;
+    czml.push({
+      id: "Green cylinder",
+      name: "Green cylinder",
+      availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
       position: {
         cartographicDegrees: [Lat, Lng, 0],
       },
       cylinder: {
-        length: Value2,
+        length: 5000,
+        topRadius: 2000,
+        bottomRadius: 2000,
+        material: {
+          solidColor: {
+            color: {
+              rgba: [0, 255, 0, 255],
+            },
+          },
+        },
+        outline: false,
+      },
+    }, 
+    { 
+      id: "Red cylinder",
+      name: "Red cylinder",
+      availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+      position: {
+        cartographicDegrees: [Lat, Lng, 3750],
+      },
+      cylinder: {
+        length: cylinderLength,
         topRadius: 2000,
         bottomRadius: 2000,
         material: {
@@ -157,29 +216,14 @@ console.log(element);
             },
           },
         },
+        outline: false,
       },
     },
-     {
-      id: "shape3",
-      name: "yellow cylinder",
-       availability: timeLine3,
-      position: {
-        cartographicDegrees: [Lat, Lng, 0],
-      },
-      cylinder: {
-        length: Value3,
-        topRadius: 2000,
-        bottomRadius: 2000,
-        material: {
-          solidColor: {
-            color: {
-              rgba: [255, 255, 0, 255],
-            },
-          },
-        },
-      },
-    },
-  ];
+    )
+  }
+
+
+  console.log("czml object: ", czml);
   
   
       layerId = reearth.layers.add({
@@ -188,7 +232,7 @@ console.log(element);
         title: 'CZML',
         property: {
           default: {
-            url: czmlId,
+            url: czml,
             type: "czml",
             clampToGround: true
           },
@@ -198,7 +242,7 @@ console.log(element);
       reearth.camera.flyTo({
         lng: Lat,
         lat: Lng,
-        height: Value3,
+        height: 10000,
       }, {
         duration: 2
       });
