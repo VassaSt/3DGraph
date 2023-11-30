@@ -1,0 +1,267 @@
+reearth.ui.show(`
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&family=Roboto:wght@400;500;700&display=swap');
+
+  html,
+  body {
+    margin: 0;
+    width: 300px;
+    overflow: hidden;
+  }
+
+  #wrapper {
+    box-sizing: border-box;
+    background-color: #e6e6e6;
+    padding: 4px;
+  }
+
+  input {
+    border: none;
+    width: 180px;
+    height: 20px;
+    color: #141414;
+    background-color: #BFBFBF;
+    margin-bottom: 10px;
+  }
+
+  input::placeholder {
+    font-size: 12px;
+    padding-left: 4px;
+  }
+
+  label {
+    display: inline-block;
+    width: 55px;
+  }
+</style>
+
+<div id="wrapper">
+  <input type="text" id="search-input">
+  <input type="text" id="value-input">
+  <div>
+    <label for="year-from">FROM: </label>
+    <input type="text" id="year-from">
+  </div>
+  <div>
+    <label for="year-to">TO: </label>
+    <input type="text" id="year-to">
+  </div>
+  <button id="search-btn" class="cursor-btn"> Search </button>
+</div>
+
+<script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+<script>
+  let czml;
+  let layerId
+  let reearth, cesium, property, layers;
+  let resultLang = 'en'
+  let centroid = []
+  let centroidArr = []
+
+  const searchBtn = document.getElementById("search-btn");
+
+
+  window.addEventListener("message", async function (e) {
+    if (e.source !== parent) return;
+    reearth = e.source.reearth;
+    layers = reearth.layers.layers;
+    cesium = reearth.Cesium;
+  });
+
+
+  searchBtn.addEventListener('click', function searchByLocationName() {
+    let addressElm = document.getElementById("search-input");
+    let valueElm = document.getElementById("value-input");
+    let yearFrom = document.getElementById("year-from");
+    let yearTo = document.getElementById("year-to");
+    let keyword = addressElm.value.replace(/ |,/g, '+');
+    let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
+    let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+    let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+
+    // console.log("getCentroidPoint", getCentroidPoint);
+
+    fetch(getCentroidPoint).then(response => {
+      if (response.ok) {
+        response.json().then(data => {
+          console.log("data: ", data);
+
+          data.features.map(obj => {
+            if (obj.properties.category === "boundary") {
+              centroid.push(obj.geometry.coordinates)
+              centroidArr.push({
+                placeId: obj.properties["place_id"],
+                centroid: obj.geometry.coordinates,
+                value: valueElm.value,
+                yearFrom: yearFrom.value,
+                yearTo: yearTo.value,
+              })
+            }
+          })
+          setCZML(centroidArr);
+          console.log("centroidArr", centroidArr);
+        })
+      } else {
+        throw new Error(response.statusText);
+      }
+    })
+  });
+
+
+  function setCZML(centroidArr) {
+    if (centroidArr.length > 0) {
+      centroidArr.map((element) => {
+        // console.log(element);
+        let Lat = element.centroid[0];
+        let Lng = element.centroid[1];
+        let Value = (element.value) * 10;
+        let Value2 = Value * 2;
+        let Value3 = Value * 3;
+        let placeId = element.placeId;
+        let From = element.yearFrom;
+        let To = element.yearTo;
+        let timeFrom = new Date(From);
+        let timeTo = new Date(To);
+        let newDate = new Date();
+
+        function timeSet(item) {
+          let result = new Date(item + item.getTimezoneOffset())
+          console.log(result.toJSON());
+          return result.toJSON();
+        }
+
+        // let timeLine = timeSet(timeFrom) + "/" + timeSet(timeTo);
+        // console.log(timeLine);
+        //       let timeLine2 =  "2023-11-25T00:00:00Z/2023-11-26T24:00:00Z";
+        //       let timeLine3 = "2023-11-27T00:00:00Z/2023-11-28T24:00:00Z";
+
+        //   let test = timeSet(timeTo) + "/" + timeSet(newDate)
+
+
+        czml = [
+          {
+            id: "document",
+            name: "CZML Geometries: Cones and Cylinders",
+            version: "1.0",
+            clock: {
+              interval: "2023-01-01T00:00:00Z/" + timeSet(newDate),
+              currentTime: "2023-01-01T00:00:00Z/",
+              multiplier: 900,
+            },
+          },
+        ]
+
+        
+
+        if (Value <= 5000) {
+          czml.push({
+            id: "Green cylinder",
+            name: "Green cylinder",
+            availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+            position: {
+              cartographicDegrees: [Lat, Lng, 0],
+            },
+            cylinder: {
+              length: Value,
+              topRadius: 2000,
+              bottomRadius: 2000,
+              material: {
+                solidColor: {
+                  color: {
+                    rgba: [0, 255, 0, 255],
+                  },
+                },
+              },
+              outline: false,
+            },
+          },
+          )
+        }
+
+        if (Value >= 7500) {
+          let cylinderLength = Value - 5000;
+          czml.push({
+            id: "Green cylinder",
+            name: "Green cylinder",
+            availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+            position: {
+              cartographicDegrees: [Lat, Lng, 0],
+            },
+            cylinder: {
+              length: 5000,
+              topRadius: 2000,
+              bottomRadius: 2000,
+              material: {
+                solidColor: {
+                  color: {
+                    rgba: [0, 255, 0, 255],
+                  },
+                },
+              },
+              outline: false,
+            },
+          },
+            {
+              id: "Red cylinder",
+              name: "Red cylinder",
+              availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+              position: {
+                cartographicDegrees: [Lat, Lng, 3750],
+              },
+              cylinder: {
+                length: cylinderLength,
+                topRadius: 2000,
+                bottomRadius: 2000,
+                material: {
+                  solidColor: {
+                    color: {
+                      rgba: [255, 0, 0, 255],
+                    },
+                  },
+                },
+                outline: false,
+              },
+            },
+          )
+        }
+
+
+        console.log("czml object: ", czml);
+
+
+        layerId = reearth.layers.add({
+          extensionId: "resource",
+          isVisible: true,
+          title: 'CZML',
+          property: {
+            default: {
+              url: czml,
+              type: "czml",
+              clampToGround: true
+            },
+          },
+        });
+
+        reearth.camera.flyTo({
+          lng: Lat,
+          lat: Lng,
+          height: 10000,
+        }, {
+          duration: 2
+        });
+      })
+    }
+  }
+
+
+</script>
+`);
+
+reearth.on("update", send);
+send();
+
+function send() {
+reearth.ui.postMessage({
+layer: reearth.layers.layers
+})
+}

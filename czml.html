@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <script>
+
+    let czmlTEST = [
+      {
+        id: "document",
+        name: "CZML Geometries: Cones and Cylinders",
+        version: "1.0",
+      },
+      {
+        id: "shape1",
+        name: "Green cylinder",
+        availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+        position: {
+          cartographicDegrees: [Lat, Lng, 0],
+        },
+        cylinder: {
+          length: Value,
+          topRadius: 2000,
+          bottomRadius: 2000,
+          material: {
+            solidColor: {
+              color: {
+                rgba: [0, 255, 0, 255],
+              },
+            },
+          },
+          outline: false,
+        },
+      },
+      {
+        id: "shape2",
+        name: "Red cylinder",
+        availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+        position: {
+          cartographicDegrees: [Lat, Lng, Value],
+        },
+        cylinder: {
+          length: Value,
+          topRadius: 2000,
+          bottomRadius: 2000,
+          material: {
+            solidColor: {
+              color: {
+                rgba: [255, 0, 0, 255],
+              },
+            },
+          },
+        },
+      },
+      {
+        id: "shape3",
+        name: "blue cylinder",
+        availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+        position: {
+          cartographicDegrees: [Lat, Lng, Value2],
+        },
+        cylinder: {
+          length: Value,
+          topRadius: 2000,
+          bottomRadius: 2000,
+          material: {
+            solidColor: {
+              color: {
+                rgba: [0, 0, 255, 255],
+              },
+            },
+          },
+        },
+      },
+    ];
+
+
+
+
+    // example file
+
+    let testArray = [{
+      placeId: "261815850",
+      centroid: [135.5014539, 34.6937569],
+      value: "490",
+      yearFrom: "2019 01",
+      yearTo: "2020 12",
+    },
+    {
+      placeId: "261815850",
+      centroid: [135.5014539, 34.6937569],
+      value: "560",
+      yearFrom: "2021",
+      yearTo: "2023",
+    },
+    {
+      placeId: "261815850",
+      centroid: [135.5014539, 34.6937569],
+      value: "750",
+      yearFrom: "2023",
+      yearTo: "2023 11",
+    },
+    {
+      placeId: "263602505",
+      centroid: [135.1943764, 34.6932379],
+      value: "300",
+      yearFrom: "2020",
+      yearTo: "2021 12",
+    },
+    {
+      placeId: "263602505",
+      centroid: [135.1943764, 34.6932379],
+      value: "420",
+      yearFrom: "2022",
+      yearTo: "2023 11",
+    },
+    {
+      placeId: "263879797",
+      centroid: [134.6854793, 34.8153529],
+      value: "690",
+      yearFrom: "2019",
+      yearTo: "2021 12",
+    },
+    {
+      placeId: "263879797",
+      centroid: [134.6854793, 34.8153529],
+      value: "280",
+      yearFrom: "2022",
+      yearTo: "2023 11",
+    },]
+
+
+  </script>
+</body>
+
+</html>
