@@ -5,3 +5,12 @@ extensions:
   - id: diagram-graph
     type: widget
     name: Plugin 3DGraph
+    schema:
+      groups:
+        - id: default
+          title: File
+          fields:
+            - id: url
+              type: url
+              title: File URL
+              ui: file
