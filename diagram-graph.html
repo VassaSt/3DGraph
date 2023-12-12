@@ -55,14 +55,14 @@ reearth.ui.show(`
   let layerId;
   let reearth, cesium, property, layers;
   let newProperty;
-  let resultLang = 'en';
+  let resultLang = 'ja';
   let newDate = new Date();
   let i = 0;
   let DataFile = [];
 
   const btn = document.getElementById("start-btn");
 
-  
+
   function timeSet(item) {
     let result = new Date(item + item.getTimezoneOffset())
     return result.toJSON();
@@ -72,7 +72,6 @@ reearth.ui.show(`
     try {
       const data = await d3.csv(filePath);
       return data;
-      // Process the data here
     } catch (error) {
       console.error('Error:', error);
     }
@@ -94,41 +93,65 @@ reearth.ui.show(`
       console.log("1 file: ", file);
       readCSV(file)
         .then(data => {
-          console.log("data: ", data);
+          // console.log("data: ", data);
 
-          DataFile = data;
-          delete DataFile.columns; 
-          DataFile.map((element) => {
-            if (!element.hasOwnProperty("value") || !element.hasOwnProperty("Value")){
-console.log("no value");
+          delete data.columns;
+
+
+          data.map((element) => {
+            let valid;
+            if ((element.hasOwnProperty("value")) || (element.hasOwnProperty("Value"))) {
+              valid = "false";
+            } else {
+              valid = "true";
+              // console.log("no Value");
             }
-          //   console.log("data element: ", element);
 
-          //   let test = {
-          //     location: element.location,
-          //     Value: element.Value,
-          //   };
+            if (valid === "true") {
+              // console.log("data element: ", element);
 
-          //   DataFile.push(test);
+              const { CityName, location, Value, value, Lat, Lng, ...rest } = element;
 
-          //   // DataFile.location = element.location;
-          //   // DataFile.Value = element.Value;
+             let timeSetArr = Object.keys(rest);
+             console.log(timeSetArr);
 
-          //   // // change logic and create as many objects in DataFile as number of rest elements
-          //   // const { CityName, Value, Lat, Lng, ...rest } = element;
-          //   // console.log(rest);
 
-          //   // let time = Object.keys(rest);
-          //   // console.log("data key: ", time);
+              let timeArr = Object.entries(rest);
+              console.log(timeArr.length, timeArr);
+              for (let index = 0; index < timeArr.length; index++) {
 
-          //   // for (const [key, value] of Object.entries(rest)) {
-          //   //   console.log(key, value);
-          //   //   // DataFile.Value = value;
-          //   // }
+                let obj = {
+                  timeTo: "",
+                  timeFrom: timeArr[index][0],
+                  Value: timeArr[index][1],
+                  location: element.CityName,
+                }
+                DataFile.push(obj)
+              }
 
-          //   // let values = Object.values(rest);
-          //   // console.log("data values: ", values);
+              // for (const [key, value] of timeArr) {
+              //   let obj = {
+              //     timeTo: key,
+              //     timeFrom: key,
+              //     Value: value,
+              //     location: element.CityName,
+              //   }
+              //   DataFile.push(obj)
+              // }
 
+              // for (const [key, value] of Object.entries(rest)) {
+              //   let obj = {
+              //     timeFrom: key,
+              //     Value: value,
+              //     location: element.CityName,
+              //   }
+              //   DataFile.push(obj)
+              // }
+
+            } else {
+
+              DataFile = data;
+            }
           });
           console.log("DataFile: ", DataFile);
         })
@@ -138,39 +161,39 @@ console.log("no value");
 
   btn.addEventListener('click', function searchByLocationName() {
 
-  // console.log("2 DataFile: ", DataFile);
-  
-  DataFile.map((element) => {
-    i++
-    if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
-    let addressElm = element.location || element.CityName;
-    let keyword = addressElm.replace(/ |,/g, '+');
-    let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
-    let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
-    let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+    // console.log("2 DataFile: ", DataFile);
 
-    // console.log("getCentroidPoint", getCentroidPoint);
+    DataFile.map((element) => {
+      i++
+      if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
+        let addressElm = element.location || element.CityName;
+        let keyword = addressElm.replace(/ |,/g, '+');
+        let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
+        let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+        let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
 
-    fetch(getCentroidPoint).then(response => {
-      if (response.ok) {
-        response.json().then(data => {
-          // console.log("data: ", data);
-          data.features.map(obj => {
-            if (obj.properties.category === "boundary") {
-              element.placeId = obj.properties["place_id"];
-              element.centroid = obj.geometry.coordinates;
-            }
-          })
-          setCZML(element);
+        console.log("getCentroidPoint", getCentroidPoint);
+
+        fetch(getCentroidPoint).then(response => {
+          if (response.ok) {
+            response.json().then(data => {
+              // console.log("data: ", data);
+              data.features.map(obj => {
+                if (obj.properties.category === "boundary") {
+                  element.placeId = obj.properties["place_id"];
+                  element.centroid = obj.geometry.coordinates;
+                }
+              })
+              setCZML(element);
+            })
+          } else {
+            throw new Error(response.statusText);
+          }
         })
       } else {
-        throw new Error(response.statusText);
+        setCZML(element);
       }
     })
-  } else {
-    setCZML(element);
-  }
-  })
 
   });
 
@@ -178,10 +201,15 @@ console.log("no value");
     id: "document",
     name: "CZML Geolocation Diagram",
     version: "1.0",
+    clock: {
+      interval: "2000-01-01T00:00:00Z/" + timeSet(newDate),
+      currentTime: "2000-01-01T00:00:00Z/",
+      multiplier: 900,
+    },
   },]
 
   function setCZML(element) {
-    console.log("element in setCZML: ", element);
+    // console.log("element in setCZML: ", element);
     let Lat;
     let Lng
     if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
@@ -196,7 +224,7 @@ console.log("no value");
     let Value = ((element.Value) || (element.value)) * 10;
     let placeId = element.placeId;
     let timeFromValue = element.timeFrom;
-    let timeToValue = element.timeTo;
+    let timeToValue = element.timeTo || "2015-01-01";
 
     // let timeFromValue = "2023-11-25";
     // let timeToValue = "2023-11-26"
@@ -205,7 +233,7 @@ console.log("no value");
     let redId = "red_" + i;
     let greenId = "green_" + i;
     let blueId = "blue_" + i;
-    // console.log("FROM :", timeSet(timeFrom));
+    console.log("FROM :", timeSet(timeFrom));
     // console.log("TO: ", timeSet(timeTo));
 
     // value small
@@ -213,6 +241,7 @@ console.log("no value");
       czml.push({
         id: greenId,
         name: "Green cylinder",
+        availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
         position: {
           cartographicDegrees: [Lat, Lng, 0],
         },
@@ -240,6 +269,7 @@ console.log("no value");
       czml.push({
         id: greenId,
         name: "Green cylinder",
+        availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
         position: {
           cartographicDegrees: [Lat, Lng, 0],
         },
@@ -260,6 +290,7 @@ console.log("no value");
         {
           id: redId,
           name: "Red cylinder",
+          availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
           position: {
             cartographicDegrees: [Lat, Lng, Height],
           },
@@ -289,6 +320,7 @@ console.log("no value");
       czml.push({
         id: greenId,
         name: "Green cylinder",
+        availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
         position: {
           cartographicDegrees: [Lat, Lng, 0],
         },
@@ -309,6 +341,7 @@ console.log("no value");
         {
           id: redId,
           name: "Red cylinder",
+          availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
           position: {
             cartographicDegrees: [Lat, Lng, Height],
           },
@@ -329,6 +362,7 @@ console.log("no value");
         {
           id: blueId,
           name: "Blue cylinder",
+          availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
           position: {
             cartographicDegrees: [Lat, Lng, Height2],
           },
