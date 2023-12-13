@@ -55,7 +55,7 @@ reearth.ui.show(`
   let layerId;
   let reearth, cesium, property, layers;
   let newProperty;
-  let resultLang = 'ja';
+  let resultLang = 'en';
   let newDate = new Date();
   let i = 0;
   let DataFile = [];
@@ -63,10 +63,25 @@ reearth.ui.show(`
   const btn = document.getElementById("start-btn");
 
 
+
+
   function timeSet(item) {
-    let result = new Date(item + item.getTimezoneOffset())
+    let date = new Date(item);
+    let result = new Date(date + date.getTimezoneOffset())
     return result.toJSON();
   }
+
+  let czml = [{
+    id: "document",
+    name: "CZML Geolocation Diagram",
+    version: "1.0",
+    clock: {
+      interval: "2000-01-01T00:00:00.000Z/2015-01-01T14:40:00.000Z",
+      currentTime: "2000-01-01T00:00:00.000Z",
+      multiplier: 10518975,
+    },
+  },
+  ]
 
   async function readCSV(filePath) {
     try {
@@ -76,7 +91,6 @@ reearth.ui.show(`
       console.error('Error:', error);
     }
   }
-
 
 
   window.addEventListener("message", async function (e) {
@@ -90,89 +104,27 @@ reearth.ui.show(`
     if (JSON.stringify(property) != JSON.stringify(newProperty)) {
       property = newProperty;
       let file = property.default.url;
-      console.log("1 file: ", file);
+      // console.log("1 file: ", file);
       readCSV(file)
         .then(data => {
-          // console.log("data: ", data);
-
           delete data.columns;
-
-
-          data.map((element) => {
-            let valid;
-            if ((element.hasOwnProperty("value")) || (element.hasOwnProperty("Value"))) {
-              valid = "false";
-            } else {
-              valid = "true";
-              // console.log("no Value");
-            }
-
-            if (valid === "true") {
-              // console.log("data element: ", element);
-
-              const { CityName, location, Value, value, Lat, Lng, ...rest } = element;
-
-             let timeSetArr = Object.keys(rest);
-             console.log(timeSetArr);
-
-
-              let timeArr = Object.entries(rest);
-              console.log(timeArr.length, timeArr);
-              for (let index = 0; index < timeArr.length; index++) {
-
-                let obj = {
-                  timeTo: "",
-                  timeFrom: timeArr[index][0],
-                  Value: timeArr[index][1],
-                  location: element.CityName,
-                }
-                DataFile.push(obj)
-              }
-
-              // for (const [key, value] of timeArr) {
-              //   let obj = {
-              //     timeTo: key,
-              //     timeFrom: key,
-              //     Value: value,
-              //     location: element.CityName,
-              //   }
-              //   DataFile.push(obj)
-              // }
-
-              // for (const [key, value] of Object.entries(rest)) {
-              //   let obj = {
-              //     timeFrom: key,
-              //     Value: value,
-              //     location: element.CityName,
-              //   }
-              //   DataFile.push(obj)
-              // }
-
-            } else {
-
-              DataFile = data;
-            }
-          });
-          console.log("DataFile: ", DataFile);
+          convertLocation(data);
         })
     }
   });
 
+  function convertLocation(data) {
 
-  btn.addEventListener('click', function searchByLocationName() {
+    data.map((element) => {
 
-    // console.log("2 DataFile: ", DataFile);
-
-    DataFile.map((element) => {
-      i++
-      if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
+      if ((element.hasOwnProperty("location")) || (element.hasOwnProperty("CityName"))) {
         let addressElm = element.location || element.CityName;
         let keyword = addressElm.replace(/ |,/g, '+');
         let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
         let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
         let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
 
-        console.log("getCentroidPoint", getCentroidPoint);
+        // console.log("getCentroidPoint", getCentroidPoint);
 
         fetch(getCentroidPoint).then(response => {
           if (response.ok) {
@@ -180,70 +132,114 @@ reearth.ui.show(`
               // console.log("data: ", data);
               data.features.map(obj => {
                 if (obj.properties.category === "boundary") {
-                  element.placeId = obj.properties["place_id"];
-                  element.centroid = obj.geometry.coordinates;
+                  element.Lat = obj.geometry.coordinates[0];
+                  element.Lng = obj.geometry.coordinates[1];
                 }
               })
-              setCZML(element);
+              convertData(element);
             })
           } else {
             throw new Error(response.statusText);
           }
+          // console.log(data);
         })
       } else {
-        setCZML(element);
+        convertData(element);
       }
     })
+  }
 
-  });
-
-  let czml = [{
-    id: "document",
-    name: "CZML Geolocation Diagram",
-    version: "1.0",
-    clock: {
-      interval: "2000-01-01T00:00:00Z/" + timeSet(newDate),
-      currentTime: "2000-01-01T00:00:00Z/",
-      multiplier: 900,
-    },
-  },]
-
-  function setCZML(element) {
-    // console.log("element in setCZML: ", element);
-    let Lat;
-    let Lng
-    if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
-      Lat = element.centroid[0];
-      Lng = element.centroid[1];
+  function convertData(element) {
+    // console.log(element);
+    let valid;
+    if ((element.hasOwnProperty("value")) || (element.hasOwnProperty("Value"))) {
+      valid = "false";
     } else {
-      Lat = element.lat;
-      Lng = element.lng;
+      valid = "true";
     }
 
-    let Height;
-    let Value = ((element.Value) || (element.value)) * 10;
-    let placeId = element.placeId;
-    let timeFromValue = element.timeFrom;
-    let timeToValue = element.timeTo || "2015-01-01";
+    if (valid === "true") {
+      // console.log("data element: ", element);
 
-    // let timeFromValue = "2023-11-25";
-    // let timeToValue = "2023-11-26"
-    let timeFrom = new Date(timeFromValue);
-    let timeTo = new Date(timeToValue);
+      const { location, CityName, Lat, Lng, ...rest } = element;
+
+      let timeSetArr = Object.keys(rest);
+      let x = timeSetArr[timeSetArr.length - 1];
+      timeSetArr.push(x)
+      timeSetArr.splice(0, 1)
+
+      // console.log(timeSetArr);
+
+      let timeArr = Object.entries(rest);
+
+      // console.log(rest);
+      for (let i = 0; i < timeArr.length; i++) {
+        const obj = {
+          timeTo: timeSetArr[i],
+          timeFrom: timeArr[i][0],
+          Value: timeArr[i][1],
+          lat: element.Lat,
+          lng: element.Lng,
+          location: element.location || element.CityName,
+        }
+        DataFile.push(obj)
+      }
+    } else {
+      const obj = {
+        Value: element.Value || element.value,
+        lat: element.Lat,
+        lng: element.Lng,
+        location: element.location || element.CityName,
+      }
+      DataFile.push(obj)
+    }
+  };
+
+  btn.addEventListener('click', function searchByLocationName() {
+    console.log("DataFile: ", DataFile);
+    DataFile.map(element => setCZML(element))
+  });
+
+
+  function setCZML(element) {
+    i++
+
+    let latitude = element.lat;
+    let longitude = element.lng;
+
+    let Value = element.Value.split(",").join("");
+    let location = element.location;
+
+    let Height;
+
+    //  let test2 = Value.split(",").join("");
+    //  console.log(test2);
+
+    //  let test3 = Value.replace(/,/g, '');
+    //  console.log(test3);
+
+
+    console.log(Value);
+
     let redId = "red_" + i;
     let greenId = "green_" + i;
     let blueId = "blue_" + i;
-    console.log("FROM :", timeSet(timeFrom));
-    // console.log("TO: ", timeSet(timeTo));
 
-    // value small
-    if (Value <= 3000) {
+    if (element.hasOwnProperty("timeFrom")) {
+      console.log(true)
+
+      let timeFrom = element.timeFrom;
+    let timeTo = element.timeTo;
+
+    // // value small
+    if (Value <= 300) {
       czml.push({
         id: greenId,
         name: "Green cylinder",
+        cityName: location,
         availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
         position: {
-          cartographicDegrees: [Lat, Lng, 0],
+          cartographicDegrees: [latitude, longitude, 0],
         },
         cylinder: {
           length: Value,
@@ -263,18 +259,19 @@ reearth.ui.show(`
     }
 
     // value middle
-    if ((Value > 3000) && (Value <= 5000)) {
-      let cylinderLength = Value - 3000;
-      Height = (3000 + cylinderLength) / 2;
+    if ((Value > 300) && (Value <= 500)) {
+      let cylinderLength = Value - 300;
+      Height = (300 + cylinderLength) / 2;
       czml.push({
         id: greenId,
         name: "Green cylinder",
+        cityName: location,
         availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
         position: {
-          cartographicDegrees: [Lat, Lng, 0],
+          cartographicDegrees: [latitude, longitude, 0],
         },
         cylinder: {
-          length: 3000,
+          length: 300,
           topRadius: 2000,
           bottomRadius: 2000,
           material: {
@@ -290,9 +287,10 @@ reearth.ui.show(`
         {
           id: redId,
           name: "Red cylinder",
+          cityName: location,
           availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
           position: {
-            cartographicDegrees: [Lat, Lng, Height],
+            cartographicDegrees: [latitude, longitude, Height],
           },
           cylinder: {
             length: cylinderLength,
@@ -311,21 +309,28 @@ reearth.ui.show(`
       )
     }
 
-    // //  value height
-    if (Value > 5000) {
-      let cylinderLength = Value - 3000;
-      Height = (3000 + cylinderLength) / 2;
+    //  value height
+    if (Value > 500) {
+      let cylinderLength = Value - 300;
+      Height = (300 + cylinderLength) / 2;
       let cylinderLength2 = Value - cylinderLength;
-      let Height2 = 3000 + cylinderLength;
+      let Height2 = 300 + cylinderLength;
+
+      // console.log("cylinderLength", cylinderLength);
+      // console.log("Height", Height);
+      // console.log("cylinderLength2", cylinderLength2);
+      // console.log("Height2", Height2);
+
       czml.push({
         id: greenId,
         name: "Green cylinder",
+        cityName: location,
         availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
         position: {
-          cartographicDegrees: [Lat, Lng, 0],
+          cartographicDegrees: [latitude, longitude, 0],
         },
         cylinder: {
-          length: 3000,
+          length: 300,
           topRadius: 2000,
           bottomRadius: 2000,
           material: {
@@ -341,9 +346,10 @@ reearth.ui.show(`
         {
           id: redId,
           name: "Red cylinder",
+          cityName: location,
           availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
           position: {
-            cartographicDegrees: [Lat, Lng, Height],
+            cartographicDegrees: [latitude, longitude, Height],
           },
           cylinder: {
             length: cylinderLength,
@@ -364,7 +370,7 @@ reearth.ui.show(`
           name: "Blue cylinder",
           availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
           position: {
-            cartographicDegrees: [Lat, Lng, Height2],
+            cartographicDegrees: [latitude, longitude, Height2],
           },
           cylinder: {
             length: cylinderLength2,
@@ -383,7 +389,167 @@ reearth.ui.show(`
       )
     }
 
-    // console.log("czml object: ", czml);
+
+    } else{
+      console.log(false);
+
+
+    // // value small
+    if (Value <= 300) {
+      czml.push({
+        id: greenId,
+        name: "Green cylinder",
+        cityName: location,
+        position: {
+          cartographicDegrees: [latitude, longitude, 0],
+        },
+        cylinder: {
+          length: Value,
+          topRadius: 2000,
+          bottomRadius: 2000,
+          material: {
+            solidColor: {
+              color: {
+                rgba: [0, 255, 0, 255],
+              },
+            },
+          },
+          outline: false,
+        },
+      },
+      )
+    }
+
+    // value middle
+    if ((Value > 300) && (Value <= 500)) {
+      let cylinderLength = Value - 300;
+      Height = (300 + cylinderLength) / 2;
+      czml.push({
+        id: greenId,
+        name: "Green cylinder",
+        cityName: location,
+        position: {
+          cartographicDegrees: [latitude, longitude, 0],
+        },
+        cylinder: {
+          length: 300,
+          topRadius: 2000,
+          bottomRadius: 2000,
+          material: {
+            solidColor: {
+              color: {
+                rgba: [0, 255, 0, 255],
+              },
+            },
+          },
+          outline: false,
+        },
+      },
+        {
+          id: redId,
+          name: "Red cylinder",
+          cityName: location,
+          position: {
+            cartographicDegrees: [latitude, longitude, Height],
+          },
+          cylinder: {
+            length: cylinderLength,
+            topRadius: 2000,
+            bottomRadius: 2000,
+            material: {
+              solidColor: {
+                color: {
+                  rgba: [255, 0, 0, 255],
+                },
+              },
+            },
+            outline: false,
+          },
+        },
+      )
+    }
+
+    //  value height
+    if (Value > 500) {
+      let cylinderLength = Value - 300;
+      Height = (300 + cylinderLength) / 2;
+      let cylinderLength2 = Value - cylinderLength;
+      let Height2 = 300 + cylinderLength;
+
+      // console.log("cylinderLength", cylinderLength);
+      // console.log("Height", Height);
+      // console.log("cylinderLength2", cylinderLength2);
+      // console.log("Height2", Height2);
+
+      czml.push({
+        id: greenId,
+        name: "Green cylinder",
+        cityName: location,
+        position: {
+          cartographicDegrees: [latitude, longitude, 0],
+        },
+        cylinder: {
+          length: 300,
+          topRadius: 2000,
+          bottomRadius: 2000,
+          material: {
+            solidColor: {
+              color: {
+                rgba: [0, 255, 0, 255],
+              },
+            },
+          },
+          outline: false,
+        },
+      },
+        {
+          id: redId,
+          name: "Red cylinder",
+          cityName: location,
+          position: {
+            cartographicDegrees: [latitude, longitude, Height],
+          },
+          cylinder: {
+            length: cylinderLength,
+            topRadius: 2000,
+            bottomRadius: 2000,
+            material: {
+              solidColor: {
+                color: {
+                  rgba: [255, 0, 0, 255],
+                },
+              },
+            },
+            outline: false,
+          },
+        },
+        {
+          id: blueId,
+          name: "Blue cylinder",
+          cityName: location,
+          position: {
+            cartographicDegrees: [latitude, longitude, Height2],
+          },
+          cylinder: {
+            length: cylinderLength2,
+            topRadius: 2000,
+            bottomRadius: 2000,
+            material: {
+              solidColor: {
+                color: {
+                  rgba: [0, 0, 255, 255],
+                },
+              },
+            },
+            outline: false,
+          },
+        },
+      )
+    }
+
+    }
+
+    console.log("czml object: ", czml);
 
 
     layerId = reearth.layers.add({
@@ -400,8 +566,8 @@ reearth.ui.show(`
     });
 
     reearth.camera.flyTo({
-      lng: Lat,
-      lat: Lng,
+      lng: latitude,
+      lat: longitude,
       height: 10000,
     }, {
       duration: 2
