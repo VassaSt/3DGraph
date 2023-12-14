@@ -1,0 +1,223 @@
+reearth.ui.show(`
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&family=Roboto:wght@400;500;700&display=swap');
+
+  html,
+  body {
+    margin: 0;
+    width: 160px;
+    overflow: hidden;
+  }
+
+  #wrapper {
+    box-sizing: border-box;
+    background-color: #ffffff;
+    padding: 12px;
+    border-radius: 4px;
+  }
+
+  input {
+    border: none;
+    width: 180px;
+    height: 20px;
+    color: #141414;
+    background-color: #BFBFBF;
+    margin-bottom: 10px;
+  }
+
+  input::placeholder {
+    font-size: 12px;
+    padding-left: 4px;
+  }
+
+  label {
+    display: inline-block;
+    width: 55px;
+  }
+
+  #start-btn {
+    padding: 4px 24px;
+    display: block;
+    width: 140px;
+    font-weight: 500;
+    color: #ffffff;
+    background-color: #dd00ff;
+  }
+</style>
+
+<div id="wrapper">
+  <button id="start-btn"> START </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+<script>
+  let layerId;
+  let reearth, cesium, property, layers;
+  let newProperty;
+  let resultLang = 'en';
+  let newDate = new Date();
+  let i = 0;
+
+
+  window.addEventListener("message", async function (e) {
+    if (e.source !== parent) return;
+    reearth = e.source.reearth;
+    layers = reearth.layers.layers;
+    cesium = reearth.Cesium;
+  });
+
+
+    
+  let DataFile = [
+    {
+      location: "Japan Himeji",
+      lat: 134.6854793,
+      lng: 34.8153529,
+      Value: "1098",
+    },
+  ];
+
+
+  const btn = document.getElementById("start-btn");
+
+
+  let czml = [{
+    id: "document",
+    name: "CZML Geolocation Diagram",
+    version: "1.0",
+  },
+  ]
+
+
+  function setCZML(element) {
+    i++
+
+    let latitude = element.lat;
+    let longitude = element.lng;
+
+    let Value = element.Value.split(",").join("");
+    let location = element.location;
+
+    let Height;
+
+    let redId = "red_" + i;
+    let greenId = "green_" + i;
+    let blueId = "blue_" + i;
+
+  
+      let cylinderLength = Value - 300;
+      Height = Value / 2;
+      // to do: find proportionals 
+      // let cylinderLength2 = (Value) * 1 + 225;
+      // let Height2 = cylinderLength2;
+
+      czml.push({
+        id: greenId,
+        name: "Green cylinder",
+        cityName: location,
+        position: {
+          cartographicDegrees: [latitude, longitude, 0],
+        },
+        cylinder: {
+          length: 300,
+          topRadius: 2000,
+          bottomRadius: 2000,
+          material: {
+            solidColor: {
+              color: {
+                rgba: [0, 255, 0, 255],
+              },
+            },
+          },
+          outline: false,
+        },
+      },
+        {
+          id: redId,
+          name: "Red cylinder",
+          cityName: location,
+          position: {
+            cartographicDegrees: [latitude, longitude, Height],
+          },
+          cylinder: {
+            length: cylinderLength,
+            topRadius: 2000,
+            bottomRadius: 2000,
+            material: {
+              solidColor: {
+                color: {
+                  rgba: [255, 0, 0, 255],
+                },
+              },
+            },
+            outline: false,
+          },
+        },
+        {
+          id: blueId,
+          name: "Blue cylinder",
+          cityName: location,
+          position: {
+            cartographicDegrees: [latitude, longitude, Height2],
+          },
+          cylinder: {
+            length: cylinderLength2,
+            topRadius: 2000,
+            bottomRadius: 2000,
+            material: {
+              solidColor: {
+                color: {
+                  rgba: [0, 0, 255, 255],
+                },
+              },
+            },
+            outline: false,
+          },
+        },
+      )
+    }
+
+
+  btn.addEventListener('click', animation);
+
+  function animation() {
+    DataFile.map(element => setCZML(element))
+
+    let czmlURL = czml;
+    console.log(czmlURL);
+    
+    layerId = reearth.layers.add({
+      extensionId: "resource",
+      isVisible: true,
+      title: 'CZML',
+      property: {
+        default: {
+          url: czmlURL,
+          type: "czml",
+          clampToGround: true
+        },
+      },
+    });
+
+    reearth.camera.flyTo({
+      lng: 134.6854793,
+      lat: 34.8153529,
+      height: 10000,
+    }, {
+      duration: 2
+    });
+  }
+
+</script>
+`);
+
+reearth.on("update", send);
+send();
+
+function send() {
+reearth.ui.postMessage({
+property: reearth.widget.property,
+layer: reearth.layers.layers
+})
+}

@@ -76,7 +76,7 @@ reearth.ui.show(`
     name: "CZML Geolocation Diagram",
     version: "1.0",
     clock: {
-      interval: "2000-01-01T00:00:00.000Z/2015-01-01T14:40:00.000Z",
+      interval: "1999-01-01T00:00:00.000Z/2016-01-01T14:40:00.000Z",
       currentTime: "2000-01-01T00:00:00.000Z",
       multiplier: 10518975,
     },
@@ -113,41 +113,41 @@ reearth.ui.show(`
     }
   });
 
-  function convertLocation(data) {
 
-    data.map((element) => {
 
-      if ((element.hasOwnProperty("location")) || (element.hasOwnProperty("CityName"))) {
-        let addressElm = element.location || element.CityName;
-        let keyword = addressElm.replace(/ |,/g, '+');
-        let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
-        let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
-        let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+  async function convertLocation(data) {
+  for (const element of data) {
+    if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
+      let addressElm = element.location || element.CityName;
+      let keyword = addressElm.replace(/ |,/g, '+');
+      let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
+      let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+      let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
 
-        // console.log("getCentroidPoint", getCentroidPoint);
+      console.log("getCentroidPoint", getCentroidPoint);
 
-        fetch(getCentroidPoint).then(response => {
-          if (response.ok) {
-            response.json().then(data => {
-              // console.log("data: ", data);
-              data.features.map(obj => {
-                if (obj.properties.category === "boundary") {
-                  element.Lat = obj.geometry.coordinates[0];
-                  element.Lng = obj.geometry.coordinates[1];
-                }
-              })
-              convertData(element);
-            })
-          } else {
-            throw new Error(response.statusText);
-          }
-          // console.log(data);
-        })
-      } else {
-        convertData(element);
+      try {
+        const response = await fetch(getCentroidPoint);
+        if (response.ok) {
+          const data = await response.json();
+          data.features.map(obj => {
+            if (obj.properties.category === "boundary") {
+              element.Lat = obj.geometry.coordinates[0];
+              element.Lng = obj.geometry.coordinates[1];
+            }
+          });
+          convertData(element);
+        } else {
+          throw new Error(response.statusText);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
       }
-    })
+    } else {
+      convertData(element);
+    }
   }
+}
 
   function convertData(element) {
     // console.log(element);
@@ -164,10 +164,11 @@ reearth.ui.show(`
       const { location, CityName, Lat, Lng, ...rest } = element;
 
       let timeSetArr = Object.keys(rest);
-      let x = timeSetArr[timeSetArr.length - 1];
-      timeSetArr.push(x)
-      timeSetArr.splice(0, 1)
-
+      let lastValue = timeSetArr[timeSetArr.length - 1];
+      timeSetArr.push(lastValue)
+      if (timeSetArr.length > 1) {
+        timeSetArr.splice(0, 1)
+      }
       // console.log(timeSetArr);
 
       let timeArr = Object.entries(rest);
@@ -175,8 +176,8 @@ reearth.ui.show(`
       // console.log(rest);
       for (let i = 0; i < timeArr.length; i++) {
         const obj = {
-          timeTo: timeSetArr[i],
-          timeFrom: timeArr[i][0],
+          timeTo: timeSetArr[i] + "-12",
+          timeFrom: timeArr[i][0] + "-01",
           Value: timeArr[i][1],
           lat: element.Lat,
           lng: element.Lng,
@@ -195,12 +196,6 @@ reearth.ui.show(`
     }
   };
 
-  btn.addEventListener('click', function searchByLocationName() {
-    console.log("DataFile: ", DataFile);
-    DataFile.map(element => setCZML(element))
-  });
-
-
   function setCZML(element) {
     i++
 
@@ -212,15 +207,6 @@ reearth.ui.show(`
 
     let Height;
 
-    //  let test2 = Value.split(",").join("");
-    //  console.log(test2);
-
-    //  let test3 = Value.replace(/,/g, '');
-    //  console.log(test3);
-
-
-    console.log(Value);
-
     let redId = "red_" + i;
     let greenId = "green_" + i;
     let blueId = "blue_" + i;
@@ -228,16 +214,19 @@ reearth.ui.show(`
     if (element.hasOwnProperty("timeFrom")) {
       console.log(true)
 
-      let timeFrom = element.timeFrom;
+    let timeFrom = element.timeFrom;
     let timeTo = element.timeTo;
 
+    let timeSetStr = "";
+    timeSetStr = timeSet(timeFrom) + "/" + timeSet(timeTo);
+
     // // value small
     if (Value <= 300) {
       czml.push({
         id: greenId,
         name: "Green cylinder",
         cityName: location,
-        availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+        availability: timeSetStr,
         position: {
           cartographicDegrees: [latitude, longitude, 0],
         },
@@ -266,7 +255,7 @@ reearth.ui.show(`
         id: greenId,
         name: "Green cylinder",
         cityName: location,
-        availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+        availability: timeSetStr,
         position: {
           cartographicDegrees: [latitude, longitude, 0],
         },
@@ -288,7 +277,7 @@ reearth.ui.show(`
           id: redId,
           name: "Red cylinder",
           cityName: location,
-          availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+          availability: timeSetStr,
           position: {
             cartographicDegrees: [latitude, longitude, Height],
           },
@@ -313,19 +302,14 @@ reearth.ui.show(`
     if (Value > 500) {
       let cylinderLength = Value - 300;
       Height = (300 + cylinderLength) / 2;
-      let cylinderLength2 = Value - cylinderLength;
-      let Height2 = 300 + cylinderLength;
-
-      // console.log("cylinderLength", cylinderLength);
-      // console.log("Height", Height);
-      // console.log("cylinderLength2", cylinderLength2);
-      // console.log("Height2", Height2);
+      let cylinderLength2 = cylinderLength;
+      let Height2 = Value;
 
       czml.push({
         id: greenId,
         name: "Green cylinder",
         cityName: location,
-        availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+        availability: timeSetStr,
         position: {
           cartographicDegrees: [latitude, longitude, 0],
         },
@@ -347,7 +331,7 @@ reearth.ui.show(`
           id: redId,
           name: "Red cylinder",
           cityName: location,
-          availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+          availability: timeSetStr,
           position: {
             cartographicDegrees: [latitude, longitude, Height],
           },
@@ -368,7 +352,8 @@ reearth.ui.show(`
         {
           id: blueId,
           name: "Blue cylinder",
-          availability: timeSet(timeFrom) + "/" + timeSet(timeTo),
+          cityName: location,
+          availability: timeSetStr,
           position: {
             cartographicDegrees: [latitude, longitude, Height2],
           },
@@ -390,9 +375,7 @@ reearth.ui.show(`
     }
 
 
-    } else{
-      console.log(false);
-
+    } else {
 
     // // value small
     if (Value <= 300) {
@@ -473,13 +456,8 @@ reearth.ui.show(`
     if (Value > 500) {
       let cylinderLength = Value - 300;
       Height = (300 + cylinderLength) / 2;
-      let cylinderLength2 = Value - cylinderLength;
-      let Height2 = 300 + cylinderLength;
-
-      // console.log("cylinderLength", cylinderLength);
-      // console.log("Height", Height);
-      // console.log("cylinderLength2", cylinderLength2);
-      // console.log("Height2", Height2);
+      let cylinderLength2 = Value - 500;
+      let Height2 = Value;
 
       czml.push({
         id: greenId,
@@ -549,30 +527,37 @@ reearth.ui.show(`
 
     }
 
-    console.log("czml object: ", czml);
+  }
 
+  btn.addEventListener('click', animation);
 
+  function animation() {
+    console.log(DataFile)
+    DataFile.map(element => setCZML(element))
+
+    let czmlURL = czml;
+    console.log(czmlURL);
+    
     layerId = reearth.layers.add({
       extensionId: "resource",
       isVisible: true,
       title: 'CZML',
       property: {
         default: {
-          url: czml,
+          url: czmlURL,
           type: "czml",
           clampToGround: true
         },
       },
     });
 
-    reearth.camera.flyTo({
-      lng: latitude,
-      lat: longitude,
-      height: 10000,
-    }, {
-      duration: 2
-    });
-
+    // reearth.camera.flyTo({
+    //   lng: latitude,
+    //   lat: longitude,
+    //   height: 10000,
+    // }, {
+    //   duration: 2
+    // });
   }
 
 </script>
