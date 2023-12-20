@@ -74,7 +74,7 @@ reearth.ui.show(`
       location: "Japan Himeji",
       lat: 134.6854793,
       lng: 34.8153529,
-      Value: "1098",
+      Value: "598",
     },
   ];
 
@@ -99,18 +99,15 @@ reearth.ui.show(`
     let Value = element.Value.split(",").join("");
     let location = element.location;
 
-    let Height;
-
     let redId = "red_" + i;
     let greenId = "green_" + i;
     let blueId = "blue_" + i;
 
   
       let cylinderLength = Value - 300;
-      Height = Value / 2;
-      // to do: find proportionals 
-      // let cylinderLength2 = (Value) * 1 + 225;
-      // let Height2 = cylinderLength2;
+      let Height = Value / 2;
+      let cylinderLength2 = Value - cylinderLength;
+      let Height2 = Value;
 
       czml.push({
         id: greenId,
