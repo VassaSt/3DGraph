@@ -71,7 +71,7 @@ reearth.ui.show(`
     return date.toJSON();
   }
 
-  
+
   let czml = [{
     id: "document",
     name: "CZML Geolocation Diagram",
@@ -117,38 +117,38 @@ reearth.ui.show(`
 
 
   async function convertLocation(data) {
-  for (const element of data) {
-    if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
-      let addressElm = element.location || element.CityName;
-      let keyword = addressElm.replace(/ |,/g, '+');
-      let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
-      let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
-      let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+    for (const element of data) {
+      if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
+        let addressElm = element.location || element.CityName;
+        let keyword = addressElm.replace(/ |,/g, '+');
+        let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
+        let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
+        let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
 
-      // console.log("getCentroidPoint", getCentroidPoint);
+        // console.log("getCentroidPoint", getCentroidPoint);
 
-      try {
-        const response = await fetch(getCentroidPoint);
-        if (response.ok) {
-          const data = await response.json();
-          data.features.map(obj => {
-            if (obj.properties.category === "boundary") {
-              element.Lat = obj.geometry.coordinates[0];
-              element.Lng = obj.geometry.coordinates[1];
-            }
-          });
-          convertData(element);
-        } else {
-          throw new Error(response.statusText);
+        try {
+          const response = await fetch(getCentroidPoint);
+          if (response.ok) {
+            const data = await response.json();
+            data.features.map(obj => {
+              if (obj.properties.category === "boundary") {
+                element.Lat = obj.geometry.coordinates[0];
+                element.Lng = obj.geometry.coordinates[1];
+              }
+            });
+            convertData(element);
+          } else {
+            throw new Error(response.statusText);
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
         }
-      } catch (error) {
-        console.error("Error fetching data:", error);
+      } else {
+        convertData(element);
       }
-    } else {
-      convertData(element);
     }
   }
-}
 
   function convertData(element) {
     // console.log(element);
@@ -158,6 +158,28 @@ reearth.ui.show(`
     } else {
       valid = "true";
     }
+
+
+    let Value, timeFrom, timeTo;
+
+    function Bird() { }
+    Bird.prototype.base = function() {
+      this.Value =  Value;
+      this.lat = element.Lat;
+      this.lng = element.Lng;
+      this.location = element.location || element.CityName;
+}
+
+function Dog() { }
+// Змініть код лише під цим рядком
+Dog.prototype = Object.create(Bird.prototype)
+Dog.prototype.constructor = Dog;
+Dog.prototype.time = function() {
+  this.timeFrom = timeFrom;
+  this.timeTo = timeTo;
+};
+
+
 
     if (valid === "true") {
       // console.log("data element: ", element);
@@ -169,34 +191,55 @@ reearth.ui.show(`
       lastValue = Number(lastValue) + 1;
       lastValue = lastValue.toString();
       // console.log(lastValue);
-
       timeSetArr.push(lastValue)
       if (timeSetArr.length > 1) {
         timeSetArr.splice(0, 1)
       }
 
-      
       let timeArr = Object.entries(rest);
 
       // console.log(rest);
       for (let i = 0; i < timeArr.length; i++) {
-        const obj = {
-          timeFrom: timeArr[i][0],
-          timeTo: timeSetArr[i],
-          Value: timeArr[i][1],
-          lat: element.Lat,
-          lng: element.Lng,
-          location: element.location || element.CityName,
-        }
+        // this is original
+        // const obj = {
+        //   timeFrom: timeArr[i][0],
+        //   timeTo: timeSetArr[i],
+        //   Value: timeArr[i][1],
+        //   lat: element.Lat,
+        //   lng: element.Lng,
+        //   location: element.location || element.CityName,
+        // }
+
+      // experiment constructor
+      Value = timeArr[i][1];
+      timeFrom = timeArr[i][0];
+      timeTo = timeSetArr[i];
+
+      let obj = new Dog(Value, timeFrom, timeTo);
+      obj.base()
+      obj.time()
+
+      console.log(obj)
+
         DataFile.push(obj)
       }
+
     } else {
-      const obj = {
-        Value: element.Value || element.value,
-        lat: element.Lat,
-        lng: element.Lng,
-        location: element.location || element.CityName,
-      }
+
+        Value = element.Value || element.value;
+
+let obj = new Bird(Value);
+obj.base()
+
+console.log("constructor test", obj)
+
+// this is base
+      // const obj = {
+      //   Value: element.Value || element.value,
+      //   lat: element.Lat,
+      //   lng: element.Lng,
+      //   location: element.location || element.CityName,
+      // }
       DataFile.push(obj)
     }
   };
@@ -210,9 +253,9 @@ reearth.ui.show(`
     let Value = element.Value.split(",").join("");
 
     let cylinderLength = Value - 300;
-      let Height = Value / 2;
-      let cylinderLength2 = Value - cylinderLength;
-      let Height2 = Value;
+    let Height = Value / 2;
+    let cylinderLength2 = Value - cylinderLength;
+    let Height2 = Value;
 
     let location = element.location;
 
@@ -223,309 +266,309 @@ reearth.ui.show(`
     if (element.hasOwnProperty("timeFrom")) {
       // console.log(true)
 
-    let timeFrom = element.timeFrom;
-    let timeTo = element.timeTo;
+      let timeFrom = element.timeFrom;
+      let timeTo = element.timeTo;
 
-    let timeToMinusDay = new Date(timeTo);
-timeToMinusDay.setDate(timeToMinusDay.getDate() - 1);
-timeToMinusDay.setHours(timeToMinusDay.getHours() + 23);
-timeToMinusDay.setMinutes(timeToMinusDay.getMinutes() + 59);
-// console.log(timeToMinusDay.toJSON());
+      let timeToMinusDay = new Date(timeTo);
+      timeToMinusDay.setDate(timeToMinusDay.getDate() - 1);
+      timeToMinusDay.setHours(timeToMinusDay.getHours() + 23);
+      timeToMinusDay.setMinutes(timeToMinusDay.getMinutes() + 59);
+      // console.log(timeToMinusDay.toJSON());
 
 
-    let timeSetStr = "";
-    timeSetStr = timeSet(timeFrom) + "/" + timeToMinusDay.toJSON();
+      let timeSetStr = "";
+      timeSetStr = timeSet(timeFrom) + "/" + timeToMinusDay.toJSON();
 
-    // // value small
-    if (Value <= 300) {
-      czml.push({
-        id: greenId,
-        name: "Green cylinder",
-        cityName: location,
-        availability: timeSetStr,
-        position: {
-          cartographicDegrees: [latitude, longitude, 0],
-        },
-        cylinder: {
-          length: Value,
-          topRadius: 2000,
-          bottomRadius: 2000,
-          material: {
-            solidColor: {
-              color: {
-                rgba: [0, 255, 0, 255],
-              },
-            },
-          },
-          outline: false,
-        },
-      },
-      )
-    }
-
-    // value middle
-    if ((Value > 300) && (Value <= 500)) {
-      czml.push({
-        id: greenId,
-        name: "Green cylinder",
-        cityName: location,
-        availability: timeSetStr,
-        position: {
-          cartographicDegrees: [latitude, longitude, 0],
-        },
-        cylinder: {
-          length: 300,
-          topRadius: 2000,
-          bottomRadius: 2000,
-          material: {
-            solidColor: {
-              color: {
-                rgba: [0, 255, 0, 255],
-              },
-            },
-          },
-          outline: false,
-        },
-      },
-        {
-          id: redId,
-          name: "Red cylinder",
+      // // value small
+      if (Value <= 300) {
+        czml.push({
+          id: greenId,
+          name: "Green cylinder",
           cityName: location,
           availability: timeSetStr,
           position: {
-            cartographicDegrees: [latitude, longitude, Height],
+            cartographicDegrees: [latitude, longitude, 0],
           },
           cylinder: {
-            length: cylinderLength,
+            length: Value,
             topRadius: 2000,
             bottomRadius: 2000,
             material: {
               solidColor: {
                 color: {
-                  rgba: [255, 0, 0, 255],
+                  rgba: [0, 255, 0, 255],
                 },
               },
             },
             outline: false,
           },
         },
-      )
-    }
+        )
+      }
 
-    //  value height
-    if (Value > 500) {
-      czml.push({
-        id: greenId,
-        name: "Green cylinder",
-        cityName: location,
-        availability: timeSetStr,
-        position: {
-          cartographicDegrees: [latitude, longitude, 0],
-        },
-        cylinder: {
-          length: 300,
-          topRadius: 2000,
-          bottomRadius: 2000,
-          material: {
-            solidColor: {
-              color: {
-                rgba: [0, 255, 0, 255],
-              },
-            },
-          },
-          outline: false,
-        },
-      },
-        {
-          id: redId,
-          name: "Red cylinder",
+      // value middle
+      if ((Value > 300) && (Value <= 500)) {
+        czml.push({
+          id: greenId,
+          name: "Green cylinder",
           cityName: location,
           availability: timeSetStr,
           position: {
-            cartographicDegrees: [latitude, longitude, Height],
+            cartographicDegrees: [latitude, longitude, 0],
           },
           cylinder: {
-            length: cylinderLength,
+            length: 300,
             topRadius: 2000,
             bottomRadius: 2000,
             material: {
               solidColor: {
                 color: {
-                  rgba: [255, 0, 0, 255],
+                  rgba: [0, 255, 0, 255],
                 },
               },
             },
             outline: false,
           },
         },
-        {
-          id: blueId,
-          name: "Blue cylinder",
+          {
+            id: redId,
+            name: "Red cylinder",
+            cityName: location,
+            availability: timeSetStr,
+            position: {
+              cartographicDegrees: [latitude, longitude, Height],
+            },
+            cylinder: {
+              length: cylinderLength,
+              topRadius: 2000,
+              bottomRadius: 2000,
+              material: {
+                solidColor: {
+                  color: {
+                    rgba: [255, 0, 0, 255],
+                  },
+                },
+              },
+              outline: false,
+            },
+          },
+        )
+      }
+
+      //  value height
+      if (Value > 500) {
+        czml.push({
+          id: greenId,
+          name: "Green cylinder",
           cityName: location,
           availability: timeSetStr,
           position: {
-            cartographicDegrees: [latitude, longitude, Height2],
+            cartographicDegrees: [latitude, longitude, 0],
           },
           cylinder: {
-            length: cylinderLength2,
+            length: 300,
             topRadius: 2000,
             bottomRadius: 2000,
             material: {
               solidColor: {
                 color: {
-                  rgba: [0, 0, 255, 255],
+                  rgba: [0, 255, 0, 255],
                 },
               },
             },
             outline: false,
           },
         },
-      )
-    }
+          {
+            id: redId,
+            name: "Red cylinder",
+            cityName: location,
+            availability: timeSetStr,
+            position: {
+              cartographicDegrees: [latitude, longitude, Height],
+            },
+            cylinder: {
+              length: cylinderLength,
+              topRadius: 2000,
+              bottomRadius: 2000,
+              material: {
+                solidColor: {
+                  color: {
+                    rgba: [255, 0, 0, 255],
+                  },
+                },
+              },
+              outline: false,
+            },
+          },
+          {
+            id: blueId,
+            name: "Blue cylinder",
+            cityName: location,
+            availability: timeSetStr,
+            position: {
+              cartographicDegrees: [latitude, longitude, Height2],
+            },
+            cylinder: {
+              length: cylinderLength2,
+              topRadius: 2000,
+              bottomRadius: 2000,
+              material: {
+                solidColor: {
+                  color: {
+                    rgba: [0, 0, 255, 255],
+                  },
+                },
+              },
+              outline: false,
+            },
+          },
+        )
+      }
 
 
     } else {
 
-    // // value small
-    if (Value <= 300) {
-      czml.push({
-        id: greenId,
-        name: "Green cylinder",
-        cityName: location,
-        position: {
-          cartographicDegrees: [latitude, longitude, 0],
-        },
-        cylinder: {
-          length: Value,
-          topRadius: 2000,
-          bottomRadius: 2000,
-          material: {
-            solidColor: {
-              color: {
-                rgba: [0, 255, 0, 255],
+      // // value small
+      if (Value <= 300) {
+        czml.push({
+          id: greenId,
+          name: "Green cylinder",
+          cityName: location,
+          position: {
+            cartographicDegrees: [latitude, longitude, 0],
+          },
+          cylinder: {
+            length: Value,
+            topRadius: 2000,
+            bottomRadius: 2000,
+            material: {
+              solidColor: {
+                color: {
+                  rgba: [0, 255, 0, 255],
+                },
               },
             },
+            outline: false,
           },
-          outline: false,
         },
-      },
-      )
-    }
+        )
+      }
 
-    // value middle
-    if ((Value > 300) && (Value <= 500)) {
-      czml.push({
-        id: greenId,
-        name: "Green cylinder",
-        cityName: location,
-        position: {
-          cartographicDegrees: [latitude, longitude, 0],
-        },
-        cylinder: {
-          length: 300,
-          topRadius: 2000,
-          bottomRadius: 2000,
-          material: {
-            solidColor: {
-              color: {
-                rgba: [0, 255, 0, 255],
-              },
-            },
-          },
-          outline: false,
-        },
-      },
-        {
-          id: redId,
-          name: "Red cylinder",
+      // value middle
+      if ((Value > 300) && (Value <= 500)) {
+        czml.push({
+          id: greenId,
+          name: "Green cylinder",
           cityName: location,
           position: {
-            cartographicDegrees: [latitude, longitude, Height],
+            cartographicDegrees: [latitude, longitude, 0],
           },
           cylinder: {
-            length: cylinderLength,
+            length: 300,
             topRadius: 2000,
             bottomRadius: 2000,
             material: {
               solidColor: {
                 color: {
-                  rgba: [255, 0, 0, 255],
+                  rgba: [0, 255, 0, 255],
                 },
               },
             },
             outline: false,
           },
         },
-      )
-    }
+          {
+            id: redId,
+            name: "Red cylinder",
+            cityName: location,
+            position: {
+              cartographicDegrees: [latitude, longitude, Height],
+            },
+            cylinder: {
+              length: cylinderLength,
+              topRadius: 2000,
+              bottomRadius: 2000,
+              material: {
+                solidColor: {
+                  color: {
+                    rgba: [255, 0, 0, 255],
+                  },
+                },
+              },
+              outline: false,
+            },
+          },
+        )
+      }
 
-    //  value height
-    if (Value > 500) {
-      czml.push({
-        id: greenId,
-        name: "Green cylinder",
-        cityName: location,
-        position: {
-          cartographicDegrees: [latitude, longitude, 0],
-        },
-        cylinder: {
-          length: 300,
-          topRadius: 2000,
-          bottomRadius: 2000,
-          material: {
-            solidColor: {
-              color: {
-                rgba: [0, 255, 0, 255],
-              },
-            },
-          },
-          outline: false,
-        },
-      },
-        {
-          id: redId,
-          name: "Red cylinder",
+      //  value height
+      if (Value > 500) {
+        czml.push({
+          id: greenId,
+          name: "Green cylinder",
           cityName: location,
           position: {
-            cartographicDegrees: [latitude, longitude, Height],
+            cartographicDegrees: [latitude, longitude, 0],
           },
           cylinder: {
-            length: cylinderLength,
+            length: 300,
             topRadius: 2000,
             bottomRadius: 2000,
             material: {
               solidColor: {
                 color: {
-                  rgba: [255, 0, 0, 255],
+                  rgba: [0, 255, 0, 255],
                 },
               },
             },
             outline: false,
           },
         },
-        {
-          id: blueId,
-          name: "Blue cylinder",
-          cityName: location,
-          position: {
-            cartographicDegrees: [latitude, longitude, Height2],
-          },
-          cylinder: {
-            length: cylinderLength2,
-            topRadius: 2000,
-            bottomRadius: 2000,
-            material: {
-              solidColor: {
-                color: {
-                  rgba: [0, 0, 255, 255],
+          {
+            id: redId,
+            name: "Red cylinder",
+            cityName: location,
+            position: {
+              cartographicDegrees: [latitude, longitude, Height],
+            },
+            cylinder: {
+              length: cylinderLength,
+              topRadius: 2000,
+              bottomRadius: 2000,
+              material: {
+                solidColor: {
+                  color: {
+                    rgba: [255, 0, 0, 255],
+                  },
                 },
               },
+              outline: false,
             },
-            outline: false,
           },
-        },
-      )
-    }
+          {
+            id: blueId,
+            name: "Blue cylinder",
+            cityName: location,
+            position: {
+              cartographicDegrees: [latitude, longitude, Height2],
+            },
+            cylinder: {
+              length: cylinderLength2,
+              topRadius: 2000,
+              bottomRadius: 2000,
+              material: {
+                solidColor: {
+                  color: {
+                    rgba: [0, 0, 255, 255],
+                  },
+                },
+              },
+              outline: false,
+            },
+          },
+        )
+      }
 
     }
 
@@ -539,7 +582,7 @@ timeToMinusDay.setMinutes(timeToMinusDay.getMinutes() + 59);
 
     let czmlURL = czml;
     // console.log(czmlURL);
-    
+
     layerId = reearth.layers.add({
       extensionId: "resource",
       isVisible: true,

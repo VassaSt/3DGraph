@@ -58,6 +58,7 @@ reearth.ui.show(`
   let resultLang = 'en';
   let newDate = new Date();
   let i = 0;
+  let czml;
 
 
   window.addEventListener("message", async function (e) {
@@ -68,13 +69,15 @@ reearth.ui.show(`
   });
 
 
-    
   let DataFile = [
     {
       location: "Japan Himeji",
       lat: 134.6854793,
       lng: 34.8153529,
       Value: "598",
+      // 2000: "245",
+      // 2005: "400",
+      // 2010: "550"
     },
   ];
 
@@ -82,12 +85,101 @@ reearth.ui.show(`
   const btn = document.getElementById("start-btn");
 
 
-  let czml = [{
+
+// experiment
+
+
+// let czmlObj;
+// const timeFrom = "1999-01-01T00:00:00.000Z";
+// const timeTo = "2016-01-01T14:40:00.000Z";
+// const loc = DataFile[0].location;
+// const latitude = DataFile[0].lat;
+// const longitude = DataFile[0].lng;
+
+// const obj = {
+//       id: "greenId",
+//       name: "Green cylinder",
+//       cityName: loc,
+//       position: {
+//         cartographicDegrees: [latitude, longitude, 0],
+//       }
+//     };
+
+//     const obj2 = {
+//       cylinder: {
+//         length: 300,
+//         topRadius: 2000,
+//         bottomRadius: 2000,
+//         material: {
+//           solidColor: {
+//             color: {
+//               rgba: [0, 255, 0, 255],
+//             },
+//           },
+//         },
+//         outline: false,
+//       },
+//     }
+
+// let clockobj = {
+//       interval: timeFrom + "/" + timeTo,
+//       currentTime: timeFrom,
+//       multiplier: 10518975,
+//     };
+
+// function CZML() {}
+// CZML.prototype.origin = function() {
+//     this.id = "document";
+//     this.name = "CZML Geolocation Diagram";
+//     this.version = "1.0";
+//     this.
+// };
+
+// function SubObj() {}
+// // Add your code below this line
+// SubObj.prototype = Object.create(CZML.prototype);
+// SubObj.prototype.constructor = SubObj;
+// SubObj.prototype.CZML = function() {
+//   // this.clock = clockobj
+//   console.log("clockobj")
+// };
+
+// function SecondSubObj() {}
+// // Add your code below this line
+// SecondSubObj.prototype = Object.create(CZML.prototype);
+// SecondSubObj.prototype.constructor = SecondSubObj;
+// SecondSubObj.prototype.CZML = function() {
+//   this.obj = obj
+//   this.obj2 = obj2
+// };
+
+
+
+
+// function setCZML(){
+//   czmlObj = new CZML();
+// }
+
+// setCZML()
+// let czml = []
+// czml.push(czmlObj)
+
+// console.log(czml)
+
+
+
+
+// ------------ original czml -----------
+
+  czml = [{
     id: "document",
     name: "CZML Geolocation Diagram",
     version: "1.0",
   },
   ]
+
+
+
 
 
   function setCZML(element) {
@@ -103,77 +195,101 @@ reearth.ui.show(`
     let greenId = "green_" + i;
     let blueId = "blue_" + i;
 
-  
-      let cylinderLength = Value - 300;
-      let Height = Value / 2;
-      let cylinderLength2 = Value - cylinderLength;
-      let Height2 = Value;
 
-      czml.push({
-        id: greenId,
-        name: "Green cylinder",
-        cityName: location,
-        position: {
-          cartographicDegrees: [latitude, longitude, 0],
-        },
-        cylinder: {
-          length: 300,
-          topRadius: 2000,
-          bottomRadius: 2000,
-          material: {
-            solidColor: {
-              color: {
-                rgba: [0, 255, 0, 255],
-              },
-            },
-          },
-          outline: false,
-        },
+    let cylinderLength = Value - 300;
+    let Height = Value / 2;
+    let cylinderLength2 = Value - cylinderLength;
+    let Height2 = Value;
+
+    let obj = {
+      id: greenId,
+      name: "Green cylinder",
+      cityName: location,
+      position: {
+        cartographicDegrees: [latitude, longitude, 0],
       },
-        {
-          id: redId,
-          name: "Red cylinder",
-          cityName: location,
-          position: {
-            cartographicDegrees: [latitude, longitude, Height],
-          },
-          cylinder: {
-            length: cylinderLength,
-            topRadius: 2000,
-            bottomRadius: 2000,
-            material: {
-              solidColor: {
-                color: {
-                  rgba: [255, 0, 0, 255],
-                },
-              },
+      cylinder: {
+        length: 300,
+        topRadius: 2000,
+        bottomRadius: 2000,
+        material: {
+          solidColor: {
+            color: {
+              rgba: [0, 255, 0, 255],
             },
-            outline: false,
           },
         },
-        {
-          id: blueId,
-          name: "Blue cylinder",
-          cityName: location,
-          position: {
-            cartographicDegrees: [latitude, longitude, Height2],
-          },
-          cylinder: {
-            length: cylinderLength2,
-            topRadius: 2000,
-            bottomRadius: 2000,
-            material: {
-              solidColor: {
-                color: {
-                  rgba: [0, 0, 255, 255],
-                },
-              },
-            },
-            outline: false,
-          },
-        },
-      )
+        outline: false,
+      },
     }
+
+
+
+    // czml.push({
+    //   id: greenId,
+    //   name: "Green cylinder",
+    //   cityName: location,
+    //   position: {
+    //     cartographicDegrees: [latitude, longitude, 0],
+    //   },
+    //   cylinder: {
+    //     length: 300,
+    //     topRadius: 2000,
+    //     bottomRadius: 2000,
+    //     material: {
+    //       solidColor: {
+    //         color: {
+    //           rgba: [0, 255, 0, 255],
+    //         },
+    //       },
+    //     },
+    //     outline: false,
+    //   },
+    // },
+    //   {
+    //     id: redId,
+    //     name: "Red cylinder",
+    //     cityName: location,
+    //     position: {
+    //       cartographicDegrees: [latitude, longitude, Height],
+    //     },
+    //     cylinder: {
+    //       length: cylinderLength,
+    //       topRadius: 2000,
+    //       bottomRadius: 2000,
+    //       material: {
+    //         solidColor: {
+    //           color: {
+    //             rgba: [255, 0, 0, 255],
+    //           },
+    //         },
+    //       },
+    //       outline: false,
+    //     },
+    //   },
+    //   {
+    //     id: blueId,
+    //     name: "Blue cylinder",
+    //     cityName: location,
+    //     position: {
+    //       cartographicDegrees: [latitude, longitude, Height2],
+    //     },
+    //     cylinder: {
+    //       length: cylinderLength2,
+    //       topRadius: 2000,
+    //       bottomRadius: 2000,
+    //       material: {
+    //         solidColor: {
+    //           color: {
+    //             rgba: [0, 0, 255, 255],
+    //           },
+    //         },
+    //       },
+    //       outline: false,
+    //     },
+    //   },
+    // )
+  }
 
 
   btn.addEventListener('click', animation);
@@ -183,7 +299,7 @@ reearth.ui.show(`
 
     let czmlURL = czml;
     console.log(czmlURL);
-    
+
     layerId = reearth.layers.add({
       extensionId: "resource",
       isVisible: true,
