@@ -52,37 +52,17 @@ reearth.ui.show(`
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
 <script>
-  let layerId;
-  let reearth, cesium, property, layers;
-  let newProperty;
+  let reearth, cesium, property, newProperty, layers, layerId, DataFile, czml;
   let resultLang = 'en';
   let newDate = new Date();
   let i = 0;
-  let DataFile = [];
-
   const btn = document.getElementById("start-btn");
-
-
-
 
   function timeSet(item) {
     let date = new Date(item);
     // let result = new Date(date + date.getTimezoneOffset())
     return date.toJSON();
   }
-
-
-  let czml = [{
-    id: "document",
-    name: "CZML Geolocation Diagram",
-    version: "1.0",
-    clock: {
-      interval: "1999-01-01T00:00:00.000Z/2016-01-01T14:40:00.000Z",
-      currentTime: "2000-01-01T00:00:00.000Z",
-      multiplier: 10518975,
-    },
-  },
-  ]
 
   async function readCSV(filePath) {
     try {
@@ -93,6 +73,21 @@ reearth.ui.show(`
     }
   }
 
+  function cleanData() {
+    DataFile = [];
+    czml = [{
+      id: "document",
+      name: "CZML Geolocation Diagram",
+      version: "1.0",
+      // clock: {
+      //   interval: "1999-01-01T00:00:00.000Z/2016-01-01T14:40:00.000Z",
+      //   currentTime: "2000-01-01T00:00:00.000Z",
+      //   multiplier: 10518975,
+      // },
+    },
+    ]
+    // TO DO: clean layers
+  }
 
   window.addEventListener("message", async function (e) {
     if (e.source !== parent) return;
@@ -106,6 +101,7 @@ reearth.ui.show(`
       property = newProperty;
       let file = property.default.url;
       // console.log("1 file: ", file);
+      cleanData();
       readCSV(file)
         .then(data => {
           delete data.columns;
@@ -113,8 +109,6 @@ reearth.ui.show(`
         })
     }
   });
-
-
 
   async function convertLocation(data) {
     for (const element of data) {
@@ -124,7 +118,6 @@ reearth.ui.show(`
         let params = "?q=" + keyword + "&addressdetails=1&format=geojson" + '&accept-language=' + resultLang
         let apiUrl = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
         let getCentroidPoint = "https://nominatim.openstreetmap.org/search" + params + "&polygon_geojson=0"
-
         // console.log("getCentroidPoint", getCentroidPoint);
 
         try {
@@ -137,451 +130,202 @@ reearth.ui.show(`
                 element.Lng = obj.geometry.coordinates[1];
               }
             });
-            convertData(element);
           } else {
             throw new Error(response.statusText);
           }
         } catch (error) {
           console.error("Error fetching data:", error);
         }
-      } else {
-        convertData(element);
       }
+      convertData(element);
     }
   }
 
   function convertData(element) {
     // console.log(element);
-    let valid;
-    if ((element.hasOwnProperty("value")) || (element.hasOwnProperty("Value"))) {
-      valid = "false";
-    } else {
-      valid = "true";
-    }
+    let obj, Value, timeFrom, timeTo;
 
-
-    let Value, timeFrom, timeTo;
-
-    function Bird() { }
-    Bird.prototype.base = function() {
-      this.Value =  Value;
+    function Base() { }
+    Base.prototype.base = function () {
+      this.Value = Value;
       this.lat = element.Lat;
       this.lng = element.Lng;
       this.location = element.location || element.CityName;
-}
+    }
 
-function Dog() { }
-// Змініть код лише під цим рядком
-Dog.prototype = Object.create(Bird.prototype)
-Dog.prototype.constructor = Dog;
-Dog.prototype.time = function() {
-  this.timeFrom = timeFrom;
-  this.timeTo = timeTo;
-};
+    function SubObj() { }
+    SubObj.prototype = Object.create(Base.prototype)
+    SubObj.prototype.constructor = SubObj;
+    SubObj.prototype.time = function () {
+      let timeToMinusDay = new Date(timeTo);
+      timeToMinusDay.setDate(timeToMinusDay.getDate() - 1);
+      timeToMinusDay.setHours(timeToMinusDay.getHours() + 23);
+      timeToMinusDay.setMinutes(timeToMinusDay.getMinutes() + 59);
+      let timeSetStr = "";
+      timeSetStr = timeSet(timeFrom) + "/" + timeToMinusDay.toJSON();
+      this.time = timeSetStr;
+    };
 
-
-
-    if (valid === "true") {
-      // console.log("data element: ", element);
-
+    if ((element.hasOwnProperty("value")) || (element.hasOwnProperty("Value"))) {
+      Value = element.Value || element.value;
+      obj = new Base(Value);
+      obj.base()
+      DataFile.push(obj)
+    } else {
       const { location, CityName, Lat, Lng, ...rest } = element;
-
       let timeSetArr = Object.keys(rest);
       let lastValue = timeSetArr[timeSetArr.length - 1];
       lastValue = Number(lastValue) + 1;
       lastValue = lastValue.toString();
-      // console.log(lastValue);
       timeSetArr.push(lastValue)
+
+      if(czml[0].hasOwnProperty("clock") === false) {
+  czml[0].clock = {
+        interval: timeSet(timeSetArr[0]) + "/" + timeSet(timeSetArr[timeSetArr.length - 1]),
+        currentTime: timeSet(timeSetArr[0]),
+        multiplier: 10518975,
+      }
+} 
+
       if (timeSetArr.length > 1) {
         timeSetArr.splice(0, 1)
       }
-
+      
       let timeArr = Object.entries(rest);
-
-      // console.log(rest);
       for (let i = 0; i < timeArr.length; i++) {
-        // this is original
-        // const obj = {
-        //   timeFrom: timeArr[i][0],
-        //   timeTo: timeSetArr[i],
-        //   Value: timeArr[i][1],
-        //   lat: element.Lat,
-        //   lng: element.Lng,
-        //   location: element.location || element.CityName,
-        // }
-
-      // experiment constructor
-      Value = timeArr[i][1];
-      timeFrom = timeArr[i][0];
-      timeTo = timeSetArr[i];
-
-      let obj = new Dog(Value, timeFrom, timeTo);
-      obj.base()
-      obj.time()
-
-      console.log(obj)
-
+        Value = timeArr[i][1];
+        timeFrom = timeArr[i][0];
+        timeTo = timeSetArr[i];
+        obj = new SubObj(Value, timeFrom, timeTo);
+        obj.base()
+        obj.time()
         DataFile.push(obj)
       }
-
-    } else {
-
-        Value = element.Value || element.value;
-
-let obj = new Bird(Value);
-obj.base()
-
-console.log("constructor test", obj)
-
-// this is base
-      // const obj = {
-      //   Value: element.Value || element.value,
-      //   lat: element.Lat,
-      //   lng: element.Lng,
-      //   location: element.location || element.CityName,
-      // }
-      DataFile.push(obj)
     }
   };
 
   function setCZML(element) {
     i++
-
     let latitude = element.lat;
     let longitude = element.lng;
-
     let Value = element.Value.split(",").join("");
-
     let cylinderLength = Value - 300;
     let Height = Value / 2;
     let cylinderLength2 = Value - cylinderLength;
     let Height2 = Value;
-
     let location = element.location;
-
-    let redId = "red_" + i;
+    let green = [0, 255, 0, 255];
+    let red = [255, 0, 0, 255];
+    let blue = [0, 0, 255, 255];
     let greenId = "green_" + i;
+    let redId = "red_" + i;
     let blueId = "blue_" + i;
+    let labelObj = {
+      text: location,
+      font: "12px sans-serif",
+      showBackground: false,
+      horizontalOrigin: "LEFT",
+      style: "FILL_AND_OUTLINE",
+      outlineWidth: 2,
+      pixelOffset: {
+        cartesian2: [20, 0],
+      },
+    }
+    let obj, objId, colorName, height, color;
 
-    if (element.hasOwnProperty("timeFrom")) {
-      // console.log(true)
-
-      let timeFrom = element.timeFrom;
-      let timeTo = element.timeTo;
-
-      let timeToMinusDay = new Date(timeTo);
-      timeToMinusDay.setDate(timeToMinusDay.getDate() - 1);
-      timeToMinusDay.setHours(timeToMinusDay.getHours() + 23);
-      timeToMinusDay.setMinutes(timeToMinusDay.getMinutes() + 59);
-      // console.log(timeToMinusDay.toJSON());
-
-
-      let timeSetStr = "";
-      timeSetStr = timeSet(timeFrom) + "/" + timeToMinusDay.toJSON();
-
-      // // value small
-      if (Value <= 300) {
-        czml.push({
-          id: greenId,
-          name: "Green cylinder",
-          cityName: location,
-          availability: timeSetStr,
-          position: {
-            cartographicDegrees: [latitude, longitude, 0],
-          },
-          cylinder: {
-            length: Value,
-            topRadius: 2000,
-            bottomRadius: 2000,
-            material: {
-              solidColor: {
-                color: {
-                  rgba: [0, 255, 0, 255],
-                },
-              },
-            },
-            outline: false,
-          },
+    function czmlObject(objId, colorName, height, Value, color) {
+      let result = {
+        id: objId,
+        name: colorName + "cylinder",
+        cityName: location,
+        position: {
+          cartographicDegrees: [latitude, longitude, height],
         },
-        )
-      }
-
-      // value middle
-      if ((Value > 300) && (Value <= 500)) {
-        czml.push({
-          id: greenId,
-          name: "Green cylinder",
-          cityName: location,
-          availability: timeSetStr,
-          position: {
-            cartographicDegrees: [latitude, longitude, 0],
-          },
-          cylinder: {
-            length: 300,
-            topRadius: 2000,
-            bottomRadius: 2000,
-            material: {
-              solidColor: {
-                color: {
-                  rgba: [0, 255, 0, 255],
-                },
+        cylinder: {
+          length: Value,
+          topRadius: 2000,
+          bottomRadius: 2000,
+          material: {
+            solidColor: {
+              color: {
+                rgba: color,
               },
             },
-            outline: false,
           },
+          outline: false,
         },
-          {
-            id: redId,
-            name: "Red cylinder",
-            cityName: location,
-            availability: timeSetStr,
-            position: {
-              cartographicDegrees: [latitude, longitude, Height],
-            },
-            cylinder: {
-              length: cylinderLength,
-              topRadius: 2000,
-              bottomRadius: 2000,
-              material: {
-                solidColor: {
-                  color: {
-                    rgba: [255, 0, 0, 255],
-                  },
-                },
-              },
-              outline: false,
-            },
-          },
-        )
       }
-
-      //  value height
-      if (Value > 500) {
-        czml.push({
-          id: greenId,
-          name: "Green cylinder",
-          cityName: location,
-          availability: timeSetStr,
-          position: {
-            cartographicDegrees: [latitude, longitude, 0],
-          },
-          cylinder: {
-            length: 300,
-            topRadius: 2000,
-            bottomRadius: 2000,
-            material: {
-              solidColor: {
-                color: {
-                  rgba: [0, 255, 0, 255],
-                },
-              },
-            },
-            outline: false,
-          },
-        },
-          {
-            id: redId,
-            name: "Red cylinder",
-            cityName: location,
-            availability: timeSetStr,
-            position: {
-              cartographicDegrees: [latitude, longitude, Height],
-            },
-            cylinder: {
-              length: cylinderLength,
-              topRadius: 2000,
-              bottomRadius: 2000,
-              material: {
-                solidColor: {
-                  color: {
-                    rgba: [255, 0, 0, 255],
-                  },
-                },
-              },
-              outline: false,
-            },
-          },
-          {
-            id: blueId,
-            name: "Blue cylinder",
-            cityName: location,
-            availability: timeSetStr,
-            position: {
-              cartographicDegrees: [latitude, longitude, Height2],
-            },
-            cylinder: {
-              length: cylinderLength2,
-              topRadius: 2000,
-              bottomRadius: 2000,
-              material: {
-                solidColor: {
-                  color: {
-                    rgba: [0, 0, 255, 255],
-                  },
-                },
-              },
-              outline: false,
-            },
-          },
-        )
-      }
-
-
-    } else {
-
-      // // value small
-      if (Value <= 300) {
-        czml.push({
-          id: greenId,
-          name: "Green cylinder",
-          cityName: location,
-          position: {
-            cartographicDegrees: [latitude, longitude, 0],
-          },
-          cylinder: {
-            length: Value,
-            topRadius: 2000,
-            bottomRadius: 2000,
-            material: {
-              solidColor: {
-                color: {
-                  rgba: [0, 255, 0, 255],
-                },
-              },
-            },
-            outline: false,
-          },
-        },
-        )
-      }
-
-      // value middle
-      if ((Value > 300) && (Value <= 500)) {
-        czml.push({
-          id: greenId,
-          name: "Green cylinder",
-          cityName: location,
-          position: {
-            cartographicDegrees: [latitude, longitude, 0],
-          },
-          cylinder: {
-            length: 300,
-            topRadius: 2000,
-            bottomRadius: 2000,
-            material: {
-              solidColor: {
-                color: {
-                  rgba: [0, 255, 0, 255],
-                },
-              },
-            },
-            outline: false,
-          },
-        },
-          {
-            id: redId,
-            name: "Red cylinder",
-            cityName: location,
-            position: {
-              cartographicDegrees: [latitude, longitude, Height],
-            },
-            cylinder: {
-              length: cylinderLength,
-              topRadius: 2000,
-              bottomRadius: 2000,
-              material: {
-                solidColor: {
-                  color: {
-                    rgba: [255, 0, 0, 255],
-                  },
-                },
-              },
-              outline: false,
-            },
-          },
-        )
-      }
-
-      //  value height
-      if (Value > 500) {
-        czml.push({
-          id: greenId,
-          name: "Green cylinder",
-          cityName: location,
-          position: {
-            cartographicDegrees: [latitude, longitude, 0],
-          },
-          cylinder: {
-            length: 300,
-            topRadius: 2000,
-            bottomRadius: 2000,
-            material: {
-              solidColor: {
-                color: {
-                  rgba: [0, 255, 0, 255],
-                },
-              },
-            },
-            outline: false,
-          },
-        },
-          {
-            id: redId,
-            name: "Red cylinder",
-            cityName: location,
-            position: {
-              cartographicDegrees: [latitude, longitude, Height],
-            },
-            cylinder: {
-              length: cylinderLength,
-              topRadius: 2000,
-              bottomRadius: 2000,
-              material: {
-                solidColor: {
-                  color: {
-                    rgba: [255, 0, 0, 255],
-                  },
-                },
-              },
-              outline: false,
-            },
-          },
-          {
-            id: blueId,
-            name: "Blue cylinder",
-            cityName: location,
-            position: {
-              cartographicDegrees: [latitude, longitude, Height2],
-            },
-            cylinder: {
-              length: cylinderLength2,
-              topRadius: 2000,
-              bottomRadius: 2000,
-              material: {
-                solidColor: {
-                  color: {
-                    rgba: [0, 0, 255, 255],
-                  },
-                },
-              },
-              outline: false,
-            },
-          },
-        )
-      }
-
+      return result
     }
 
+    if (element.hasOwnProperty("time")) {
+      let timeSetStr = element.time;
+
+      // value small
+      if (Value <= 300) {
+        obj = czmlObject(greenId, "Green_", 0, Value, green);
+        obj.availability = timeSetStr;
+        obj.label = labelObj
+        czml.push(obj)
+      }
+
+      // value middle
+      if ((Value > 300) && (Value <= 500)) {
+        obj = czmlObject(greenId, "Green_", 0, 300, green);
+        obj.availability = timeSetStr;
+        obj.label = labelObj
+        let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
+        obj2.availability = timeSetStr;
+        czml.push(obj, obj2);
+      }
+
+      //  value height
+      if (Value > 500) {
+        obj = czmlObject(greenId, "Green_", 0, 300, green);
+        obj.availability = timeSetStr;
+        obj.label = labelObj
+        let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
+        obj2.availability = timeSetStr;
+        let obj3 = czmlObject(blueId, "Blue_", Height2, cylinderLength2, blue);
+        obj3.availability = timeSetStr;
+        czml.push(obj, obj2, obj3);
+      }
+
+    } else {
+      // value small
+      if (Value <= 300) {
+        obj = czmlObject(greenId, "Green_", 0, Value, green);
+        obj.label = labelObj
+        czml.push(obj);
+      }
+
+      // value middle
+      if ((Value > 300) && (Value <= 500)) {
+        obj = czmlObject(greenId, "Green_", 0, 300, green);
+        obj.label = labelObj
+        let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
+        czml.push(obj, obj2);
+      }
+
+      //  value height
+      if (Value > 500) {
+        obj = czmlObject(greenId, "Green_", 0, 300, green);
+        obj.label = labelObj
+        let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
+        let obj3 = czmlObject(blueId, "Blue_", Height2, cylinderLength2, blue);
+        czml.push(obj, obj2, obj3);
+      }
+    }
   }
 
   btn.addEventListener('click', animation);
-
   function animation() {
-    // console.log(DataFile)
+    // console.log("DataFile: ", DataFile);
     DataFile.map(element => setCZML(element))
 
-    let czmlURL = czml;
-    // console.log(czmlURL);
+    console.log(czml);
+    let latitude = czml[1].position.cartographicDegrees[0];
+    let longitude = czml[1].position.cartographicDegrees[1];
 
     layerId = reearth.layers.add({
       extensionId: "resource",
@@ -589,15 +333,12 @@ console.log("constructor test", obj)
       title: 'CZML',
       property: {
         default: {
-          url: czmlURL,
+          url: czml,
           type: "czml",
           clampToGround: true
         },
       },
     });
-
-    let latitude = czmlURL[1].position.cartographicDegrees[0];
-    let longitude = czmlURL[1].position.cartographicDegrees[1];
 
     reearth.camera.flyTo({
       lng: latitude,
