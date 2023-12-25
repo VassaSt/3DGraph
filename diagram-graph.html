@@ -17,12 +17,13 @@ reearth.ui.show(`
   }
 
   input {
-    border: none;
-    width: 180px;
+    border: 1px solid #141414;
+    width: 100%;
     height: 20px;
     color: #141414;
-    background-color: #BFBFBF;
+    background-color: #f8f8f8;
     margin-bottom: 10px;
+    border-radius: 4px;
   }
 
   input::placeholder {
@@ -39,14 +40,11 @@ reearth.ui.show(`
     padding: 4px 24px;
     display: block;
     width: 140px;
+    margin-bottom: 10px;
     font-weight: 500;
     color: #ffffff;
     background-color: #dd00ff;
-  }
-
-  #increase{
-    display: inline-block;
-    width: 100%;
+    border-radius: 4px;
   }
 </style>
 
@@ -61,7 +59,7 @@ reearth.ui.show(`
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
 <script>
-  let reearth, cesium, property, newProperty, layers, layerId, DataFile, czml;
+  let reearth, cesium, property, newProperty, layers, layerId, newFile, DataFile, czml;
   let resultLang = 'en';
   let i = 0;
   let green = [0, 255, 0, 255];
@@ -86,18 +84,6 @@ reearth.ui.show(`
     }
   }
 
-  // clean DataFile array and czml file each time whe file is uploaded
-  function cleanData() {
-    DataFile = [];
-    czml = [{
-      id: "document",
-      name: "CZML Geolocation Diagram",
-      version: "1.0",
-    },
-    ]
-    // TO DO: clean layers
-  }
-
   window.addEventListener("message", async function (e) {
     if (e.source !== parent) return;
     reearth = e.source.reearth;
@@ -114,13 +100,34 @@ reearth.ui.show(`
       readCSV(file)
         .then(data => {
           delete data.columns;
-          convertLocation(data);
+          newFile = data;
         })
     }
   });
 
+
+  // clean DataFile array and czml file each time whe file is uploaded
+  function cleanData() {
+    newFile = [];
+    let filteredLayers = layers.filter(layer => (layer.type === "resource" && layer.title === 'CZML'))
+    filteredLayers.forEach(layer => {
+      reearth.layers.overrideProperty(layer.id, {
+        default: {
+          url: []
+        },
+      });
+    })
+  }
+
   // get coordinates data by the name
   async function convertLocation(data) {
+    DataFile = [];
+    czml = [{
+      id: "document",
+      name: "CZML Geolocation Diagram",
+      version: "1.0",
+    },
+    ];
     for (const element of data) {
       if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
         let addressElm = element.location || element.CityName;
@@ -241,7 +248,7 @@ reearth.ui.show(`
     let Height = Value / 2;
     let cylinderLength2 = Value - cylinderLength;
     let Height2 = Value;
-    
+
     let location = element.location;
     let greenId = "green_" + i;
     let redId = "red_" + i;
@@ -352,34 +359,46 @@ reearth.ui.show(`
   }
 
   btn.addEventListener('click', animation);
+
   function animation() {
-    // console.log("DataFile: ", DataFile);
-    DataFile.map(element => setCZML(element))
+    convertLocation(newFile)
+      .then(data => {
+        console.log("widget DataFile: ", DataFile);
+        DataFile.map(element => setCZML(element))
+        if (layerId) {
+          console.log(layerId)
+          reearth.layers.overrideProperty(layerId, {
+            default: {
+              url: czml
+            },
+          })
+        } else {
+          layerId = reearth.layers.add({
+            extensionId: "resource",
+            isVisible: true,
+            title: 'CZML',
+            property: {
+              default: {
+                url: czml,
+                type: "czml",
+                clampToGround: true
+              },
+            },
+          });
+        }
+        console.log(czml)
+        let latitude = czml[1].position.cartographicDegrees[0];
+        let longitude = czml[1].position.cartographicDegrees[1];
 
-    console.log(czml);
-    let latitude = czml[1].position.cartographicDegrees[0];
-    let longitude = czml[1].position.cartographicDegrees[1];
+        reearth.camera.flyTo({
+          lng: latitude,
+          lat: longitude,
+          height: 50000,
+        }, {
+          duration: 2
+        });
 
-    layerId = reearth.layers.add({
-      extensionId: "resource",
-      isVisible: true,
-      title: 'CZML',
-      property: {
-        default: {
-          url: czml,
-          type: "czml",
-          clampToGround: true
-        },
-      },
-    });
-
-    reearth.camera.flyTo({
-      lng: latitude,
-      lat: longitude,
-      height: 50000,
-    }, {
-      duration: 2
-    });
+      })
   }
 
 </script>
