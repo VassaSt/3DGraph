@@ -43,10 +43,19 @@ reearth.ui.show(`
     color: #ffffff;
     background-color: #dd00ff;
   }
+
+  #increase{
+    display: inline-block;
+    width: 100%;
+  }
 </style>
 
 <div id="wrapper">
   <button id="start-btn"> START </button>
+  <form action="">
+    <label for="increase">Scale:</label>
+    <input id="increase" name="increase" type="number" placeholder="1">
+  </form>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
@@ -54,9 +63,13 @@ reearth.ui.show(`
 <script>
   let reearth, cesium, property, newProperty, layers, layerId, DataFile, czml;
   let resultLang = 'en';
-  let newDate = new Date();
   let i = 0;
+  let green = [0, 255, 0, 255];
+  let red = [255, 0, 0, 255];
+  let blue = [0, 0, 255, 255];
+  let newDate = new Date();
   const btn = document.getElementById("start-btn");
+  const increase = document.getElementById("increase");
 
   function timeSet(item) {
     let date = new Date(item);
@@ -73,17 +86,13 @@ reearth.ui.show(`
     }
   }
 
+  // clean DataFile array and czml file each time whe file is uploaded
   function cleanData() {
     DataFile = [];
     czml = [{
       id: "document",
       name: "CZML Geolocation Diagram",
       version: "1.0",
-      // clock: {
-      //   interval: "1999-01-01T00:00:00.000Z/2016-01-01T14:40:00.000Z",
-      //   currentTime: "2000-01-01T00:00:00.000Z",
-      //   multiplier: 10518975,
-      // },
     },
     ]
     // TO DO: clean layers
@@ -110,6 +119,7 @@ reearth.ui.show(`
     }
   });
 
+  // get coordinates data by the name
   async function convertLocation(data) {
     for (const element of data) {
       if (element.hasOwnProperty("location") || element.hasOwnProperty("CityName")) {
@@ -141,10 +151,12 @@ reearth.ui.show(`
     }
   }
 
+  // convert data for convinion json file
   function convertData(element) {
     // console.log(element);
     let obj, Value, timeFrom, timeTo;
 
+    // basic object
     function Base() { }
     Base.prototype.base = function () {
       this.Value = Value;
@@ -153,6 +165,8 @@ reearth.ui.show(`
       this.location = element.location || element.CityName;
     }
 
+    // sub object if csv file consist fron time values 
+    // convert date to JSON format to time string for availability in czml file (for anomation) 
     function SubObj() { }
     SubObj.prototype = Object.create(Base.prototype)
     SubObj.prototype.constructor = SubObj;
@@ -166,31 +180,37 @@ reearth.ui.show(`
       this.time = timeSetStr;
     };
 
+
     if ((element.hasOwnProperty("value")) || (element.hasOwnProperty("Value"))) {
+      // basic object without time availability
       Value = element.Value || element.value;
       obj = new Base(Value);
       obj.base()
       DataFile.push(obj)
     } else {
+      // get time and values from each element (for each location point)
       const { location, CityName, Lat, Lng, ...rest } = element;
       let timeSetArr = Object.keys(rest);
+      // create one more date to finish animation
       let lastValue = timeSetArr[timeSetArr.length - 1];
       lastValue = Number(lastValue) + 1;
       lastValue = lastValue.toString();
       timeSetArr.push(lastValue)
 
-      if(czml[0].hasOwnProperty("clock") === false) {
-  czml[0].clock = {
-        interval: timeSet(timeSetArr[0]) + "/" + timeSet(timeSetArr[timeSetArr.length - 1]),
-        currentTime: timeSet(timeSetArr[0]),
-        multiplier: 10518975,
+      // add multiplayer time availability czml file (clock):　get first and last time dates
+      if (czml[0].hasOwnProperty("clock") === false) {
+        czml[0].clock = {
+          interval: timeSet(timeSetArr[0]) + "/" + timeSet(timeSetArr[timeSetArr.length - 1]),
+          currentTime: timeSet(timeSetArr[0]),
+          multiplier: 10518975,
+        }
       }
-} 
 
       if (timeSetArr.length > 1) {
         timeSetArr.splice(0, 1)
       }
-      
+
+      // sub object with time availability
       let timeArr = Object.entries(rest);
       for (let i = 0; i < timeArr.length; i++) {
         Value = timeArr[i][1];
@@ -204,19 +224,25 @@ reearth.ui.show(`
     }
   };
 
+
   function setCZML(element) {
     i++
     let latitude = element.lat;
     let longitude = element.lng;
-    let Value = element.Value.split(",").join("");
-    let cylinderLength = Value - 300;
+
+    // increase all parametrs
+    let increaseNum = increase.value || 1;
+    let smallValue = 300 * increaseNum;
+    let middleValue = 500 * increaseNum;
+    let radius = 1000 * increaseNum;
+    let Value = (element.Value.split(",").join("")) * increaseNum;
+
+    let cylinderLength = Value - smallValue;
     let Height = Value / 2;
     let cylinderLength2 = Value - cylinderLength;
     let Height2 = Value;
+    
     let location = element.location;
-    let green = [0, 255, 0, 255];
-    let red = [255, 0, 0, 255];
-    let blue = [0, 0, 255, 255];
     let greenId = "green_" + i;
     let redId = "red_" + i;
     let blueId = "blue_" + i;
@@ -231,6 +257,9 @@ reearth.ui.show(`
         cartesian2: [20, 0],
       },
     }
+
+
+
     let obj, objId, colorName, height, color;
 
     function czmlObject(objId, colorName, height, Value, color) {
@@ -243,8 +272,8 @@ reearth.ui.show(`
         },
         cylinder: {
           length: Value,
-          topRadius: 2000,
-          bottomRadius: 2000,
+          topRadius: radius,
+          bottomRadius: radius,
           material: {
             solidColor: {
               color: {
@@ -258,11 +287,13 @@ reearth.ui.show(`
       return result
     }
 
+
+    // czml file with time animation
     if (element.hasOwnProperty("time")) {
       let timeSetStr = element.time;
 
       // value small
-      if (Value <= 300) {
+      if (Value <= smallValue) {
         obj = czmlObject(greenId, "Green_", 0, Value, green);
         obj.availability = timeSetStr;
         obj.label = labelObj
@@ -270,8 +301,8 @@ reearth.ui.show(`
       }
 
       // value middle
-      if ((Value > 300) && (Value <= 500)) {
-        obj = czmlObject(greenId, "Green_", 0, 300, green);
+      if ((Value > smallValue) && (Value <= middleValue)) {
+        obj = czmlObject(greenId, "Green_", 0, smallValue, green);
         obj.availability = timeSetStr;
         obj.label = labelObj
         let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
@@ -280,8 +311,8 @@ reearth.ui.show(`
       }
 
       //  value height
-      if (Value > 500) {
-        obj = czmlObject(greenId, "Green_", 0, 300, green);
+      if (Value > middleValue) {
+        obj = czmlObject(greenId, "Green_", 0, smallValue, green);
         obj.availability = timeSetStr;
         obj.label = labelObj
         let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
@@ -292,24 +323,26 @@ reearth.ui.show(`
       }
 
     } else {
+      // czml file without time
+
       // value small
-      if (Value <= 300) {
+      if (Value <= smallValue) {
         obj = czmlObject(greenId, "Green_", 0, Value, green);
         obj.label = labelObj
         czml.push(obj);
       }
 
       // value middle
-      if ((Value > 300) && (Value <= 500)) {
-        obj = czmlObject(greenId, "Green_", 0, 300, green);
+      if ((Value > smallValue) && (Value <= middleValue)) {
+        obj = czmlObject(greenId, "Green_", 0, smallValue, green);
         obj.label = labelObj
         let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
         czml.push(obj, obj2);
       }
 
       //  value height
-      if (Value > 500) {
-        obj = czmlObject(greenId, "Green_", 0, 300, green);
+      if (Value > middleValue) {
+        obj = czmlObject(greenId, "Green_", 0, smallValue, green);
         obj.label = labelObj
         let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
         let obj3 = czmlObject(blueId, "Blue_", Height2, cylinderLength2, blue);
