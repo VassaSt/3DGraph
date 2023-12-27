@@ -7,6 +7,20 @@ reearth.ui.show(`
     margin: 0;
     width: 160px;
     overflow: hidden;
+    font-family: "Roboto";
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 120%;
+  }
+
+  button {
+    cursor: pointer;
+    border-radius: 4px;
+    border: none;
+    box-shadow: 1px 1px 4px 0px rgba(124, 124, 124, 0.20);
+    color: #ffffff;
+    margin-bottom: 10px;
+    background-color: #dd00ff;
   }
 
   #wrapper {
@@ -16,7 +30,13 @@ reearth.ui.show(`
     border-radius: 4px;
   }
 
-  input {
+  #start-btn {
+    display: block;
+    width: 140px;
+    padding: 4px 24px;
+  }
+
+  #increase {
     border: 1px solid #141414;
     width: 100%;
     height: 20px;
@@ -27,33 +47,61 @@ reearth.ui.show(`
   }
 
   input::placeholder {
-    font-size: 12px;
     padding-left: 4px;
   }
 
   label {
     display: inline-block;
-    width: 55px;
+    font-size: 14px;
+    width: 50px;
   }
 
-  #start-btn {
-    padding: 4px 24px;
-    display: block;
-    width: 140px;
-    margin-bottom: 10px;
-    font-weight: 500;
-    color: #ffffff;
-    background-color: #dd00ff;
-    border-radius: 4px;
+.static-btn {
+    display: inline-block;
+    width: fit-content;
+    height: 20px;
+}
+
+  .input-wrap {
+    display: flex;
+    position: relative;
+    height: 25px;
+    border: 1px solid #c1c1c1;
+    overflow: hidden;
+    margin-bottom: 5px;
+  }
+
+  .input-wrap:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .color-input {
+    display: flex;
+    position: absolute;
+    width: 35px;
+    height: 37px;
+    border: none;
+    background: none;
+    top: -6px;
+    left: -5px;
+  }
+
+  .txt-color {
+    display: flex;
+    height: 25px;
+    width: 50%;
+    border: none;
+    padding-left: 30px;
   }
 </style>
 
 <div id="wrapper">
   <button id="start-btn"> START </button>
-  <form action="">
+  <div>
     <label for="increase">Scale:</label>
     <input id="increase" name="increase" type="number" placeholder="1">
-  </form>
+  </div>
+  <div id="colorWrap"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
@@ -62,12 +110,15 @@ reearth.ui.show(`
   let reearth, cesium, property, newProperty, layers, layerId, newFile, DataFile, czml;
   let resultLang = 'en';
   let i = 0;
+  let j = 0;
+  let newDate = new Date();
   let green = [0, 255, 0, 255];
   let red = [255, 0, 0, 255];
   let blue = [0, 0, 255, 255];
-  let newDate = new Date();
   const btn = document.getElementById("start-btn");
   const increase = document.getElementById("increase");
+  const colorInput = document.getElementById("colorInput");
+  let colorWrap = document.getElementById("colorWrap");
 
   function timeSet(item) {
     let date = new Date(item);
@@ -84,6 +135,20 @@ reearth.ui.show(`
     }
   }
 
+  // Convert 8-digit hex colors to rgba colors
+  function convertToRgbA(alphahex) {
+    let hex = alphahex;
+    let opacity = 255;
+    // Convert each hex character pair into an integer
+    let red = parseInt(hex.substring(1, 3), 16);
+    let green = parseInt(hex.substring(3, 5), 16);
+    let blue = parseInt(hex.substring(5, 7), 16);
+
+    // RGBA array
+    let rgba = [red, green, blue, opacity]
+    return rgba
+  }
+
   window.addEventListener("message", async function (e) {
     if (e.source !== parent) return;
     reearth = e.source.reearth;
@@ -95,19 +160,81 @@ reearth.ui.show(`
     if (JSON.stringify(property) != JSON.stringify(newProperty)) {
       property = newProperty;
       let file = property.default.url;
-      // console.log("1 file: ", file);
       cleanData();
       readCSV(file)
         .then(data => {
           delete data.columns;
           newFile = data;
+          crateUI(newFile[1])
         })
     }
   });
 
+  function crateUI(arr) {
+    const { location, CityName, Lat, Lng, value, Value, ...rest } = arr;
+    let timeSetArr = Object.keys(rest);
+    let k = 0;
+
+    let colorWrap = document.createElement('div');
+    colorWrap.id = "colorWrap";
+    document.getElementById("wrapper").appendChild(colorWrap);
+
+    if (timeSetArr.length > 0) {
+      timeSetArr.map(element => {
+        let name = element;
+        // console.log(name);
+        uiObj(name, k)
+      }
+      )
+    } else {
+      let name = "Color";
+      uiObj(name, k)
+    }
+
+    function uiObj(name) {
+      k++
+      let colorInputName = "color-input__" + k;
+      let txtForColorId = "colorTxt" + k;
+
+      let colorLabel = document.createElement('label');
+      colorLabel.setAttribute("for", colorInputName);
+      colorLabel.textContent = name + ":";
+
+      let staticBtn = document.createElement('button');
+      staticBtn.classList.add("static-btn");
+      staticBtn.setAttribute("type", "button");
+      staticBtn.setAttribute("value", name);
+      staticBtn.textContent = "Static";
+      staticBtn.setAttribute("onclick", "myFunction()")
+
+      let inputWrap = document.createElement('div');
+      inputWrap.classList.add('input-wrap');
+
+      let colorInput = document.createElement('input');
+      colorInput.classList.add('color-input');
+      colorInput.id = name;
+      colorInput.setAttribute("name", colorInputName);
+      colorInput.setAttribute("type", "color");
+      colorInput.setAttribute("value", "#2bff00");
+
+      let txtForColor = document.createElement('input');
+      txtForColor.classList.add('txt-color');
+      txtForColor.setAttribute('type', 'text');
+      txtForColor.id = txtForColorId;
+      txtForColor.setAttribute('value', "#2bff00");
+
+      colorWrap.appendChild(colorLabel);
+      colorWrap.appendChild(staticBtn);
+      colorWrap.appendChild(inputWrap);
+      inputWrap.appendChild(colorInput);
+      inputWrap.appendChild(txtForColor);
+
+    }
+  }
 
   // clean DataFile array and czml file each time whe file is uploaded
   function cleanData() {
+    document.getElementById("colorWrap").remove()
     newFile = [];
     let filteredLayers = layers.filter(layer => (layer.type === "resource" && layer.title === 'CZML'))
     filteredLayers.forEach(layer => {
@@ -118,6 +245,33 @@ reearth.ui.show(`
       });
     })
   }
+
+
+  function czmlObject(objId, colorName, location, latitude, longitude, height, radius, Value, color) {
+      let result = {
+        id: objId,
+        name: colorName + "cylinder",
+        cityName: location,
+        position: {
+          cartographicDegrees: [latitude, longitude, height],
+        },
+        cylinder: {
+          length: Value,
+          topRadius: radius,
+          bottomRadius: radius,
+          material: {
+            solidColor: {
+              color: {
+                rgba: color,
+              },
+            },
+          },
+          outline: false,
+        },
+      }
+      return result
+    }
+
 
   // get coordinates data by the name
   async function convertLocation(data) {
@@ -154,15 +308,13 @@ reearth.ui.show(`
           console.error("Error fetching data:", error);
         }
       }
-      convertData(element);
+      // convertData(element);
     }
+    return data
   }
 
   // convert data for convinion json file
   function convertData(element) {
-    // console.log(element);
-    let obj, Value, timeFrom, timeTo;
-
     // basic object
     function Base() { }
     Base.prototype.base = function () {
@@ -170,6 +322,7 @@ reearth.ui.show(`
       this.lat = element.Lat;
       this.lng = element.Lng;
       this.location = element.location || element.CityName;
+      this.color = colorName;
     }
 
     // sub object if csv file consist fron time values 
@@ -191,7 +344,8 @@ reearth.ui.show(`
     if ((element.hasOwnProperty("value")) || (element.hasOwnProperty("Value"))) {
       // basic object without time availability
       Value = element.Value || element.value;
-      obj = new Base(Value);
+      colorName = "Color";
+      obj = new Base(Value, colorName);
       obj.base()
       DataFile.push(obj)
     } else {
@@ -223,7 +377,8 @@ reearth.ui.show(`
         Value = timeArr[i][1];
         timeFrom = timeArr[i][0];
         timeTo = timeSetArr[i];
-        obj = new SubObj(Value, timeFrom, timeTo);
+        colorName = timeArr[i][0];
+        obj = new SubObj(Value, timeFrom, timeTo, colorName);
         obj.base()
         obj.time()
         DataFile.push(obj)
@@ -233,26 +388,18 @@ reearth.ui.show(`
 
 
   function setCZML(element) {
+    // console.log(element.color);
     i++
     let latitude = element.lat;
     let longitude = element.lng;
 
     // increase all parametrs
     let increaseNum = increase.value || 1;
-    let smallValue = 300 * increaseNum;
-    let middleValue = 500 * increaseNum;
     let radius = 1000 * increaseNum;
     let Value = (element.Value.split(",").join("")) * increaseNum;
 
-    let cylinderLength = Value - smallValue;
-    let Height = Value / 2;
-    let cylinderLength2 = Value - cylinderLength;
-    let Height2 = Value;
-
     let location = element.location;
-    let greenId = "green_" + i;
-    let redId = "red_" + i;
-    let blueId = "blue_" + i;
+
     let labelObj = {
       text: location,
       font: "12px sans-serif",
@@ -265,108 +412,35 @@ reearth.ui.show(`
       },
     }
 
+    let objId = "Id_" + i;
+    let colorID = element.color;
+    let colorRGBA = document.getElementById(colorID).value;
+    let color = convertToRgbA(colorRGBA)
 
+    let obj;
 
-    let obj, objId, colorName, height, color;
+    obj = czmlObject(objId, colorName, location, latitude, longitude, 0, radius, Value, color);
+    obj.label = labelObj;
 
-    function czmlObject(objId, colorName, height, Value, color) {
-      let result = {
-        id: objId,
-        name: colorName + "cylinder",
-        cityName: location,
-        position: {
-          cartographicDegrees: [latitude, longitude, height],
-        },
-        cylinder: {
-          length: Value,
-          topRadius: radius,
-          bottomRadius: radius,
-          material: {
-            solidColor: {
-              color: {
-                rgba: color,
-              },
-            },
-          },
-          outline: false,
-        },
-      }
-      return result
-    }
-
-
-    // czml file with time animation
     if (element.hasOwnProperty("time")) {
       let timeSetStr = element.time;
-
-      // value small
-      if (Value <= smallValue) {
-        obj = czmlObject(greenId, "Green_", 0, Value, green);
-        obj.availability = timeSetStr;
-        obj.label = labelObj
-        czml.push(obj)
-      }
-
-      // value middle
-      if ((Value > smallValue) && (Value <= middleValue)) {
-        obj = czmlObject(greenId, "Green_", 0, smallValue, green);
-        obj.availability = timeSetStr;
-        obj.label = labelObj
-        let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
-        obj2.availability = timeSetStr;
-        czml.push(obj, obj2);
-      }
-
-      //  value height
-      if (Value > middleValue) {
-        obj = czmlObject(greenId, "Green_", 0, smallValue, green);
-        obj.availability = timeSetStr;
-        obj.label = labelObj
-        let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
-        obj2.availability = timeSetStr;
-        let obj3 = czmlObject(blueId, "Blue_", Height2, cylinderLength2, blue);
-        obj3.availability = timeSetStr;
-        czml.push(obj, obj2, obj3);
-      }
-
-    } else {
-      // czml file without time
-
-      // value small
-      if (Value <= smallValue) {
-        obj = czmlObject(greenId, "Green_", 0, Value, green);
-        obj.label = labelObj
-        czml.push(obj);
-      }
-
-      // value middle
-      if ((Value > smallValue) && (Value <= middleValue)) {
-        obj = czmlObject(greenId, "Green_", 0, smallValue, green);
-        obj.label = labelObj
-        let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
-        czml.push(obj, obj2);
-      }
-
-      //  value height
-      if (Value > middleValue) {
-        obj = czmlObject(greenId, "Green_", 0, smallValue, green);
-        obj.label = labelObj
-        let obj2 = czmlObject(redId, "Red_", Height, cylinderLength, red);
-        let obj3 = czmlObject(blueId, "Blue_", Height2, cylinderLength2, blue);
-        czml.push(obj, obj2, obj3);
-      }
+      obj.availability = timeSetStr;
     }
+    czml.push(obj)
   }
 
   btn.addEventListener('click', animation);
 
   function animation() {
     convertLocation(newFile)
-      .then(data => {
-        console.log("widget DataFile: ", DataFile);
+    .then(data => {
+      data.map(element => convertData(element))
+    })
+    .then(data => {
+        // console.log("widget DataFile: ", DataFile);
         DataFile.map(element => setCZML(element))
         if (layerId) {
-          console.log(layerId)
+          // console.log(layerId)
           reearth.layers.overrideProperty(layerId, {
             default: {
               url: czml
@@ -386,7 +460,7 @@ reearth.ui.show(`
             },
           });
         }
-        console.log(czml)
+        // console.log(czml)
         let latitude = czml[1].position.cartographicDegrees[0];
         let longitude = czml[1].position.cartographicDegrees[1];
 
@@ -400,6 +474,130 @@ reearth.ui.show(`
 
       })
   }
+
+
+ function myFunction() {
+
+  let filteredLayers = layers.filter(layer => (layer.type === "resource" && layer.title === 'CZML'))
+    filteredLayers.forEach(layer => {
+      reearth.layers.overrideProperty(layer.id, {
+        default: {
+          url: []
+        },
+      });
+    })
+
+  // console.log("newFile: ", newFile);
+  // console.log("event target: ", event.target.value);
+
+let key = event.target.value;
+
+convertLocation(newFile)
+      .then(data => {
+        let DataFile = data;
+        console.log("myFunction DataFile: ", DataFile);
+
+        DataFile.map(element => setStaticCZML(element, key))
+
+        console.log(czml);
+        if (layerId) {
+          // console.log(layerId)
+          reearth.layers.overrideProperty(layerId, {
+            default: {
+              url: czml
+            },
+          })
+        } else {
+          layerId = reearth.layers.add({
+            extensionId: "resource",
+            isVisible: true,
+            title: 'CZML',
+            property: {
+              default: {
+                url: czml,
+                type: "czml",
+                clampToGround: true
+              },
+            },
+          });
+        }
+        // console.log(czml)
+        let latitude = czml[1].position.cartographicDegrees[0];
+        let longitude = czml[1].position.cartographicDegrees[1];
+
+        reearth.camera.flyTo({
+          lng: latitude,
+          lat: longitude,
+          height: 50000,
+        }, {
+          duration: 2
+        });
+
+})
+
+  function setStaticCZML(element, key) {
+    j++
+    let latitude = element.Lat;
+    let longitude = element.Lng;
+
+    // increase all parametrs
+    let increaseNum = increase.value || 1;
+    let smallValue = 1100 * increaseNum;
+    let middleValue = 1500 * increaseNum;
+    let radius = 1000 * increaseNum;
+
+    let Value = (element[key].split(",").join(""))  * increaseNum;
+    console.log(Value);
+
+    let cylinderLength = Value - smallValue;
+    let Height = Value / 2;
+    let cylinderLength2 = Value - cylinderLength;
+    let Height2 = Value;
+
+    let location = element.CityName;
+    let greenId = "green_" + j;
+    let redId = "red_" + j;
+    let blueId = "blue_" + j;
+    let labelObj = {
+      text: location,
+      font: "12px sans-serif",
+      showBackground: false,
+      horizontalOrigin: "LEFT",
+      style: "FILL_AND_OUTLINE",
+      outlineWidth: 2,
+      pixelOffset: {
+        cartesian2: [20, 0],
+      },
+    }
+
+    let obj;
+
+      // value small
+      if (Value <= smallValue) {
+        obj = czmlObject(greenId, "Green_", location, latitude, longitude, 0, radius, Value, green);
+        obj.label = labelObj
+        czml.push(obj);
+      }
+
+      // value middle
+      if ((Value > smallValue) && (Value <= middleValue)) {
+        obj = czmlObject(greenId, "Green_", location, latitude, longitude, 0, radius, smallValue, green);
+        obj.label = labelObj
+        let obj2 = czmlObject(redId, "Red_", location, latitude, longitude, Height, radius, cylinderLength, red);
+        czml.push(obj, obj2);
+      }
+
+      //  value height
+      if (Value > middleValue) {
+        obj = czmlObject(greenId, "Green_", location, latitude, longitude, 0, radius, smallValue, green);
+        obj.label = labelObj
+        let obj2 = czmlObject(redId, "Red_", location, latitude, longitude, Height, radius, cylinderLength, red);
+        let obj3 = czmlObject(blueId, "Blue_",  location, latitude, longitude,Height2, radius, cylinderLength2, blue);
+        czml.push(obj, obj2, obj3);
+      }
+
+  }
+ }
 
 </script>
 `);
