@@ -19,8 +19,8 @@ reearth.ui.show(`
     border: none;
     box-shadow: 1px 1px 4px 0px rgba(124, 124, 124, 0.20);
     color: #ffffff;
-    margin-bottom: 10px;
-    background-color: #dd00ff;
+    margin-bottom: 5px;
+    background-color: #4c00ff;
   }
 
   #wrapper {
@@ -36,13 +36,20 @@ reearth.ui.show(`
     padding: 4px 24px;
   }
 
-  #increase {
+  .prop-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  #increase,
+  #height {
     border: 1px solid #141414;
-    width: 100%;
+    width: 60%;
     height: 20px;
     color: #141414;
     background-color: #f8f8f8;
-    margin-bottom: 10px;
     border-radius: 4px;
   }
 
@@ -54,13 +61,14 @@ reearth.ui.show(`
     display: inline-block;
     font-size: 14px;
     width: 50px;
+    padding-right: 5px;
   }
 
-.static-btn {
+  .static-btn {
     display: inline-block;
     width: fit-content;
     height: 20px;
-}
+  }
 
   .input-wrap {
     display: flex;
@@ -68,7 +76,7 @@ reearth.ui.show(`
     height: 25px;
     border: 1px solid #c1c1c1;
     overflow: hidden;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
   }
 
   .input-wrap:last-of-type {
@@ -97,9 +105,13 @@ reearth.ui.show(`
 
 <div id="wrapper">
   <button id="start-btn"> START </button>
-  <div>
+  <div class="prop-wrap">
     <label for="increase">Scale:</label>
     <input id="increase" name="increase" type="number" placeholder="1">
+  </div>
+  <div class="prop-wrap">
+    <label for="height">Height:</label>
+    <input id="height" name="height" type="number" placeholder="">
   </div>
   <div id="colorWrap"></div>
 </div>
@@ -116,7 +128,8 @@ reearth.ui.show(`
   let red = [255, 0, 0, 255];
   let blue = [0, 0, 255, 255];
   const btn = document.getElementById("start-btn");
-  const increase = document.getElementById("increase");
+  const increaseInput = document.getElementById("increase");
+  const heightInput = document.getElementById("height");
   const colorInput = document.getElementById("colorInput");
   let colorWrap = document.getElementById("colorWrap");
 
@@ -205,7 +218,7 @@ reearth.ui.show(`
       staticBtn.setAttribute("type", "button");
       staticBtn.setAttribute("value", name);
       staticBtn.textContent = "Static";
-      staticBtn.setAttribute("onclick", "myFunction()")
+      staticBtn.setAttribute("onclick", "setStaticCZML()")
 
       let inputWrap = document.createElement('div');
       inputWrap.classList.add('input-wrap');
@@ -246,35 +259,56 @@ reearth.ui.show(`
     })
   }
 
+  function fileObject(Value, Lat, Lng, location, colorName) {
+    let result = {
+      Value: Value,
+      Lat: Lat,
+      Lng: Lng,
+      location: location,
+      colorInputId: colorName,
+    }
+    return result
+  }
+
+  function time(timeFrom, timeTo) {
+    let timeToMinusDay = new Date(timeTo);
+    timeToMinusDay.setDate(timeToMinusDay.getDate() - 1);
+    timeToMinusDay.setHours(timeToMinusDay.getHours() + 23);
+    timeToMinusDay.setMinutes(timeToMinusDay.getMinutes() + 59);
+    let timeSetStr = "";
+    timeSetStr = timeSet(timeFrom) + "/" + timeToMinusDay.toJSON();
+    return timeSetStr;
+  };
 
   function czmlObject(objId, colorName, location, latitude, longitude, height, radius, Value, color) {
-      let result = {
-        id: objId,
-        name: colorName + "cylinder",
-        cityName: location,
-        position: {
-          cartographicDegrees: [latitude, longitude, height],
-        },
-        cylinder: {
-          length: Value,
-          topRadius: radius,
-          bottomRadius: radius,
-          material: {
-            solidColor: {
-              color: {
-                rgba: color,
-              },
+    let result = {
+      id: objId,
+      name: colorName + "cylinder",
+      cityName: location,
+      position: {
+        cartographicDegrees: [latitude, longitude, height],
+      },
+      cylinder: {
+        length: Value,
+        topRadius: radius,
+        bottomRadius: radius,
+        material: {
+          solidColor: {
+            color: {
+              rgba: color,
             },
           },
-          outline: false,
         },
-      }
-      return result
+        outline: false,
+      },
     }
+    return result
+  }
 
 
   // get coordinates data by the name
   async function convertLocation(data) {
+    // console.log(newFile);
     DataFile = [];
     czml = [{
       id: "document",
@@ -308,45 +342,17 @@ reearth.ui.show(`
           console.error("Error fetching data:", error);
         }
       }
-      // convertData(element);
     }
     return data
   }
 
   // convert data for convinion json file
   function convertData(element) {
-    // basic object
-    function Base() { }
-    Base.prototype.base = function () {
-      this.Value = Value;
-      this.lat = element.Lat;
-      this.lng = element.Lng;
-      this.location = element.location || element.CityName;
-      this.color = colorName;
-    }
-
-    // sub object if csv file consist fron time values 
-    // convert date to JSON format to time string for availability in czml file (for anomation) 
-    function SubObj() { }
-    SubObj.prototype = Object.create(Base.prototype)
-    SubObj.prototype.constructor = SubObj;
-    SubObj.prototype.time = function () {
-      let timeToMinusDay = new Date(timeTo);
-      timeToMinusDay.setDate(timeToMinusDay.getDate() - 1);
-      timeToMinusDay.setHours(timeToMinusDay.getHours() + 23);
-      timeToMinusDay.setMinutes(timeToMinusDay.getMinutes() + 59);
-      let timeSetStr = "";
-      timeSetStr = timeSet(timeFrom) + "/" + timeToMinusDay.toJSON();
-      this.time = timeSetStr;
-    };
-
-
     if ((element.hasOwnProperty("value")) || (element.hasOwnProperty("Value"))) {
-      // basic object without time availability
-      Value = element.Value || element.value;
-      colorName = "Color";
-      obj = new Base(Value, colorName);
-      obj.base()
+      // object without time availability
+      let Value = element.value || element.Value;
+      let location = element.location || element.CityName;
+      obj = fileObject(Value, element.Lat, element.Lng, location, "Color")
       DataFile.push(obj)
     } else {
       // get time and values from each element (for each location point)
@@ -370,17 +376,16 @@ reearth.ui.show(`
       if (timeSetArr.length > 1) {
         timeSetArr.splice(0, 1)
       }
-
-      // sub object with time availability
+      //object with time availability
       let timeArr = Object.entries(rest);
       for (let i = 0; i < timeArr.length; i++) {
         Value = timeArr[i][1];
         timeFrom = timeArr[i][0];
         timeTo = timeSetArr[i];
-        colorName = timeArr[i][0];
-        obj = new SubObj(Value, timeFrom, timeTo, colorName);
-        obj.base()
-        obj.time()
+        let location = element.location || element.CityName;
+        let colorName = timeArr[i][0];
+        obj = fileObject(Value, element.Lat, element.Lng, location, colorName);
+        obj.time = time(timeFrom, timeTo)
         DataFile.push(obj)
       }
     }
@@ -388,13 +393,13 @@ reearth.ui.show(`
 
 
   function setCZML(element) {
-    // console.log(element.color);
+    console.log(element);
     i++
-    let latitude = element.lat;
-    let longitude = element.lng;
+    let latitude = element.Lat;
+    let longitude = element.Lng;
 
     // increase all parametrs
-    let increaseNum = increase.value || 1;
+    let increaseNum = increaseInput.value || 1;
     let radius = 1000 * increaseNum;
     let Value = (element.Value.split(",").join("")) * increaseNum;
 
@@ -413,19 +418,21 @@ reearth.ui.show(`
     }
 
     let objId = "Id_" + i;
-    let colorID = element.color;
+    let colorID = element.colorInputId;
+
     let colorRGBA = document.getElementById(colorID).value;
     let color = convertToRgbA(colorRGBA)
+console.log(color);
 
     let obj;
 
-    obj = czmlObject(objId, colorName, location, latitude, longitude, 0, radius, Value, color);
-    obj.label = labelObj;
+    let colorName = "Dinamic_"
 
+    obj = czmlObject(objId, colorName, location, latitude, longitude, 0, radius, Value, color);
     if (element.hasOwnProperty("time")) {
-      let timeSetStr = element.time;
-      obj.availability = timeSetStr;
+      obj.availability = element.time;
     }
+    obj.label = labelObj;
     czml.push(obj)
   }
 
@@ -433,11 +440,11 @@ reearth.ui.show(`
 
   function animation() {
     convertLocation(newFile)
-    .then(data => {
-      data.map(element => convertData(element))
-    })
-    .then(data => {
-        // console.log("widget DataFile: ", DataFile);
+      .then(data => {
+        data.map(element => convertData(element))
+      })
+      .then(data => {
+        console.log("widget DataFile: ", DataFile);
         DataFile.map(element => setCZML(element))
         if (layerId) {
           // console.log(layerId)
@@ -460,7 +467,7 @@ reearth.ui.show(`
             },
           });
         }
-        // console.log(czml)
+        console.log(czml)
         let latitude = czml[1].position.cartographicDegrees[0];
         let longitude = czml[1].position.cartographicDegrees[1];
 
@@ -476,9 +483,8 @@ reearth.ui.show(`
   }
 
 
- function myFunction() {
-
-  let filteredLayers = layers.filter(layer => (layer.type === "resource" && layer.title === 'CZML'))
+  function setStaticCZML() {
+    let filteredLayers = layers.filter(layer => (layer.type === "resource" && layer.title === 'CZML'))
     filteredLayers.forEach(layer => {
       reearth.layers.overrideProperty(layer.id, {
         default: {
@@ -487,17 +493,17 @@ reearth.ui.show(`
       });
     })
 
-  // console.log("newFile: ", newFile);
-  // console.log("event target: ", event.target.value);
+    console.log("newFile: ", newFile);
+    
+    let keyDate = event.target.value;
+    console.log("keyDate: ", event.target.value);
 
-let key = event.target.value;
-
-convertLocation(newFile)
+    convertLocation(newFile)
       .then(data => {
-        let DataFile = data;
-        console.log("myFunction DataFile: ", DataFile);
+        // let DataFile = data;
+        console.log("setStaticCZML DataFile: ", DataFile);
 
-        DataFile.map(element => setStaticCZML(element, key))
+        DataFile.map(element => setStaticCZML(element, keyDate))
 
         console.log(czml);
         if (layerId) {
@@ -533,44 +539,45 @@ convertLocation(newFile)
           duration: 2
         });
 
-})
+      })
 
-  function setStaticCZML(element, key) {
-    j++
-    let latitude = element.Lat;
-    let longitude = element.Lng;
+    function setStaticCZML(element, keyDate) {
+      j++
+      let latitude = element.Lat;
+      let longitude = element.Lng;
 
-    // increase all parametrs
-    let increaseNum = increase.value || 1;
-    let smallValue = 1100 * increaseNum;
-    let middleValue = 1500 * increaseNum;
-    let radius = 1000 * increaseNum;
+      // increase all parametrs
+      let increaseNum = increaseInput.value || 1;
+      let smallValue = 500 * increaseNum;
+      let middleValue = 1000 * increaseNum;
+      let radius = 1000 * increaseNum;
 
-    let Value = (element[key].split(",").join(""))  * increaseNum;
-    console.log(Value);
+      console.log("element[keyDate]",  element[keyDate]);
+      let Value = (element[keyDate].split(",").join("")) * increaseNum;
 
-    let cylinderLength = Value - smallValue;
-    let Height = Value / 2;
-    let cylinderLength2 = Value - cylinderLength;
-    let Height2 = Value;
 
-    let location = element.CityName;
-    let greenId = "green_" + j;
-    let redId = "red_" + j;
-    let blueId = "blue_" + j;
-    let labelObj = {
-      text: location,
-      font: "12px sans-serif",
-      showBackground: false,
-      horizontalOrigin: "LEFT",
-      style: "FILL_AND_OUTLINE",
-      outlineWidth: 2,
-      pixelOffset: {
-        cartesian2: [20, 0],
-      },
-    }
+      let cylinderLength = Value - smallValue;
+      let Height = Value / 2;
+      let cylinderLength2 = Value - cylinderLength;
+      let Height2 = Value;
 
-    let obj;
+      let location = element.location;
+      let greenId = "green_" + j;
+      let redId = "red_" + j;
+      let blueId = "blue_" + j;
+      let labelObj = {
+        text: location,
+        font: "12px sans-serif",
+        showBackground: false,
+        horizontalOrigin: "LEFT",
+        style: "FILL_AND_OUTLINE",
+        outlineWidth: 2,
+        pixelOffset: {
+          cartesian2: [20, 0],
+        },
+      }
+
+      let obj;
 
       // value small
       if (Value <= smallValue) {
@@ -584,6 +591,7 @@ convertLocation(newFile)
         obj = czmlObject(greenId, "Green_", location, latitude, longitude, 0, radius, smallValue, green);
         obj.label = labelObj
         let obj2 = czmlObject(redId, "Red_", location, latitude, longitude, Height, radius, cylinderLength, red);
+        // obj2.label = labelObj
         czml.push(obj, obj2);
       }
 
@@ -592,12 +600,13 @@ convertLocation(newFile)
         obj = czmlObject(greenId, "Green_", location, latitude, longitude, 0, radius, smallValue, green);
         obj.label = labelObj
         let obj2 = czmlObject(redId, "Red_", location, latitude, longitude, Height, radius, cylinderLength, red);
-        let obj3 = czmlObject(blueId, "Blue_",  location, latitude, longitude,Height2, radius, cylinderLength2, blue);
+        let obj3 = czmlObject(blueId, "Blue_", location, latitude, longitude, Height2, radius, cylinderLength2, blue);
+        // obj3.label = labelObj
         czml.push(obj, obj2, obj3);
       }
 
+    }
   }
- }
 
 </script>
 `);
