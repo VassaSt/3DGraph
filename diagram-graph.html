@@ -111,7 +111,7 @@ reearth.ui.show(`
   </div>
   <div class="prop-wrap">
     <label for="height">Height:</label>
-    <input id="height" name="height" type="number" placeholder="">
+    <input id="height" name="height" type="number" placeholder="1">
   </div>
   <div id="colorWrap"></div>
 </div>
@@ -411,8 +411,9 @@ reearth.ui.show(`
 
     // increase all parametrs
     let increaseNum = increaseInput.value || 1;
+    let IncreaseHeight = heightInput.value || 1; 
     let radius = 1000 * increaseNum;
-    let Value = (element.Value.split(",").join("")) * increaseNum;
+    let Value = (element.Value.split(",").join("")) * increaseNum * IncreaseHeight;
 
     let location = element.location;
 
@@ -479,13 +480,13 @@ reearth.ui.show(`
 
       // increase all parametrs
       let increaseNum = increaseInput.value || 1;
+      let IncreaseHeight = heightInput.value || 1;
       let smallValue = 500 * increaseNum;
       let middleValue = 1000 * increaseNum;
       let radius = 1000 * increaseNum;
 
 
-      let Value = (element.Value.split(",").join("")) * increaseNum;
-
+      let Value = (element.Value.split(",").join("")) * increaseNum * IncreaseHeight;
       let cylinderLength = Value - smallValue;
       let Height = Value / 2;
       let cylinderLength2 = Value - cylinderLength;
